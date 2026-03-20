@@ -17,22 +17,35 @@ const QUICK_TASKS = [
   {
     label: "Private vault transfer",
     desc: "Send 0.0001 ETH to burn address",
-    budget: "Vault",
-    icon: "\u26A1",
+    method: "ShadeVault",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
     task: "Transfer 0.0001 ETH from vault to 0x000000000000000000000000000000000000dEaD privately",
   },
   {
     label: "Private USDC payment",
     desc: "Send $1 via Locus",
-    budget: "Locus",
-    icon: "\u26BF",
+    method: "Locus",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
+      </svg>
+    ),
     task: "Send $1 USDC to 0x000000000000000000000000000000000000dEaD privately via Locus",
   },
   {
     label: "Anonymous donation",
     desc: "Donate 0.00005 ETH",
-    budget: "Vault",
-    icon: "\u2665",
+    method: "ShadeVault",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
+    ),
     task: "Donate 0.00005 ETH anonymously to 0x000000000000000000000000000000000000dEaD",
   },
 ];
@@ -50,7 +63,15 @@ interface TaskResult {
   cost: number;
   privacyReport: string;
   disclosureManifest: any;
-  execution: { success: boolean; txHash: string | null; method: string; amount: number; currency: string; recipient: string; error?: string } | null;
+  execution: {
+    success: boolean;
+    txHash: string | null;
+    method: string;
+    amount: number;
+    currency: string;
+    recipient: string;
+    error?: string;
+  } | null;
   logEntries: Array<{ time: string; action: string; type: string; detail?: string }>;
 }
 
@@ -75,40 +96,20 @@ export default function AppPage() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch on-chain stats + vault balance
   useEffect(() => {
-    fetch(`${API_BASE}/stats`)
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => {});
-    fetch(`${API_BASE}/vault/balance`)
-      .then((r) => r.json())
-      .then((d) => setVaultBalance(d.balance))
-      .catch(() => {});
+    fetch(`${API_BASE}/stats`).then((r) => r.json()).then(setStats).catch(() => {});
+    fetch(`${API_BASE}/vault/balance`).then((r) => r.json()).then((d) => setVaultBalance(d.balance)).catch(() => {});
   }, [state, refreshKey]);
 
   const handleSubmit = useCallback(
     async (taskStr: string) => {
-      if (!isConnected) {
-        openConnectModal?.();
-        return;
-      }
-
+      if (!isConnected) { openConnectModal?.(); return; }
       setTask(taskStr);
       setState("running");
       setInputValue("");
       setResult(null);
       setErrorMsg("");
-
-      // Show initial "thinking" log entry
-      setLiveLog([
-        {
-          time: new Date().toTimeString().slice(0, 8),
-          action: "Sending task to Shade agent...",
-          type: "reasoning",
-          detail: "private inference",
-        },
-      ]);
+      setLiveLog([{ time: new Date().toTimeString().slice(0, 8), action: "Initializing private agent pipeline...", type: "reasoning", detail: "Venice AI" }]);
 
       try {
         const res = await fetch(`${API_BASE}/task`, {
@@ -116,23 +117,10 @@ export default function AppPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task: taskStr }),
         });
-
         const data: TaskResult = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.task || "Agent request failed");
-        }
-
-        // Map backend log entries to our LogEntry format
-        const mappedLog: LogEntry[] = (data.logEntries || []).map((e) => ({
-          time: e.time,
-          action: e.action,
-          type: e.type as LogEntry["type"],
-          detail: e.detail,
-        }));
-
+        if (!res.ok) throw new Error("Agent request failed");
         setResult(data);
-        setLiveLog(mappedLog);
+        setLiveLog((data.logEntries || []).map((e) => ({ time: e.time, action: e.action, type: e.type as LogEntry["type"], detail: e.detail })));
         setState("complete");
       } catch (err: any) {
         setErrorMsg(err.message || "Failed to connect to agent");
@@ -150,15 +138,26 @@ export default function AppPage() {
     setErrorMsg("");
   }, []);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <Nav />
+  const isGeneral = result?.taskType === "general";
+  const execFailed = result?.execution && !result.execution.success;
+  const execSuccess = result?.execution && result.execution.success;
 
-      <main className="flex-1 flex flex-col">
-        {/* Status bar */}
-        <div className="border-b border-border">
-          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-5">
+  return (
+    <div className="min-h-screen flex flex-col bg-bg relative">
+      {/* Ambient background */}
+      <div className="ambient-bg">
+        <div className="ambient-orb ambient-orb-1" />
+        <div className="ambient-orb ambient-orb-2" />
+        <div className="ambient-orb ambient-orb-3" />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Nav />
+
+        {/* Status ribbon */}
+        <div className="border-b border-white/[0.04]">
+          <div className="max-w-6xl mx-auto px-6 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-4">
               {isConnected ? (
                 <>
                   <div className="flex items-center gap-2">
@@ -167,298 +166,315 @@ export default function AppPage() {
                       {address?.slice(0, 6)}...{address?.slice(-4)}
                     </span>
                   </div>
-                  <div className="h-3 w-px bg-border" />
+                  <span className="text-white/[0.08]">|</span>
                   <button
                     onClick={() => setShowDeposit(true)}
-                    className="text-[11px] font-mono text-text-3 hover:text-text transition-colors"
+                    className="flex items-center gap-1.5 text-[11px] font-mono text-text-3 hover:text-gold transition-colors group"
                   >
-                    Vault: <span className="text-gold">{vaultBalance ? `${vaultBalance} ETH` : "..."}</span>
-                    <span className="text-text-3/50 ml-1">+</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gold/60 group-hover:text-gold">
+                      <rect x="2" y="6" width="20" height="14" rx="2" />
+                      <path d="M2 10h20" />
+                    </svg>
+                    <span className="text-gold">{vaultBalance || "0"} ETH</span>
                   </button>
-                  <div className="h-3 w-px bg-border" />
+                  <span className="text-white/[0.08]">|</span>
                   <span className="text-[11px] font-mono text-text-3">
-                    Tasks: <span className="text-text-2">{stats?.taskCount ?? 0}</span>
+                    {stats?.taskCount ?? 0} tasks
                   </span>
+                  {stats?.taskCount ? (
+                    <>
+                      <span className="text-white/[0.08]">|</span>
+                      <span className="text-[11px] font-mono text-gold">{stats.privacyScore}% private</span>
+                    </>
+                  ) : null}
                 </>
               ) : (
-                <span className="text-[11px] font-mono text-text-3">
-                  Wallet not connected
-                </span>
+                <span className="text-[11px] font-mono text-text-3">Connect wallet to begin</span>
               )}
             </div>
-            {state !== "idle" && (
+            {state === "running" && (
               <div className="flex items-center gap-2">
-                <div
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    state === "running"
-                      ? "bg-gold animate-pulse-dot"
-                      : state === "error"
-                        ? "bg-exposed"
-                        : "bg-safe"
-                  }`}
-                />
-                <span className="text-[11px] font-mono text-text-3">
-                  {state === "running"
-                    ? "Processing..."
-                    : state === "error"
-                      ? "Error"
-                      : "Complete"}
-                </span>
+                <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot" />
+                <span className="text-[11px] font-mono text-gold">Processing</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-6 py-8">
-          <AnimatePresence mode="wait">
-            {/* ── Idle state ── */}
-            {state === "idle" && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex-1 flex flex-col"
-              >
-                <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
-                  {/* Deposit prompt when vault is empty */}
+        <main className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-6 py-8">
+            <AnimatePresence mode="wait">
+
+              {/* ════════════ IDLE STATE ════════════ */}
+              {state === "idle" && (
+                <motion.div
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex-1 flex flex-col"
+                >
+                  {/* Deposit prompt */}
                   {isConnected && vaultBalance !== null && parseFloat(vaultBalance) === 0 && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="w-full rounded-lg border border-gold/20 bg-gold-glow p-4 mb-8 flex items-center justify-between"
+                      className="glass rounded-xl p-4 mb-6 flex items-center justify-between"
                     >
-                      <div>
-                        <p className="text-[13px] text-text font-medium">Vault is empty</p>
-                        <p className="text-[11px] text-text-3 mt-0.5">
-                          Deposit ETH to start executing private tasks on-chain.
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="2">
+                            <path d="M12 2v20M2 12h20" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-[13px] text-text">Vault is empty</p>
+                          <p className="text-[11px] text-text-3">Deposit ETH to execute private on-chain tasks</p>
+                        </div>
                       </div>
                       <button
                         onClick={() => setShowDeposit(true)}
-                        className="px-4 py-2 rounded-lg bg-gold text-bg font-mono text-[12px] font-medium hover:bg-gold-dim transition-colors shrink-0 ml-4"
+                        className="px-4 py-2 rounded-lg bg-gold text-bg font-mono text-[12px] font-medium hover:bg-gold-dim transition-colors"
                       >
                         Deposit
                       </button>
                     </motion.div>
                   )}
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="w-full text-center mb-10"
-                  >
-                    <h1 className="font-serif text-3xl md:text-4xl text-text mb-3">
-                      What should Shade do?
-                    </h1>
-                    <p className="text-text-3 text-[14px]">
-                      Describe a task. Shade will execute it privately.
-                    </p>
-                  </motion.div>
+                  {/* Center input area */}
+                  <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="text-center mb-10"
+                    >
+                      <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center mx-auto mb-6">
+                        <div className="w-3 h-3 rounded-full bg-gold animate-pulse-dot" />
+                      </div>
+                      <h1 className="font-serif text-3xl md:text-4xl text-text mb-3">
+                        What should Shade do?
+                      </h1>
+                      <p className="text-text-3 text-[14px] max-w-sm mx-auto">
+                        Describe an on-chain task. Shade will execute it without revealing your identity.
+                      </p>
+                    </motion.div>
 
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (inputValue.trim()) handleSubmit(inputValue.trim());
-                    }}
-                    className="w-full"
-                  >
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="e.g. Buy weather API access, max $5..."
-                        className="w-full bg-surface border border-border rounded-xl px-5 py-4 pr-24 text-[15px] font-mono text-text placeholder:text-text-3/50 focus:outline-none focus:border-gold/30 transition-colors"
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        disabled={!inputValue.trim()}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-lg bg-gold/10 border border-gold/20 font-mono text-[12px] text-gold hover:bg-gold/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                      >
-                        Execute
-                      </button>
+                    {/* Input */}
+                    <motion.form
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      onSubmit={(e) => { e.preventDefault(); if (inputValue.trim()) handleSubmit(inputValue.trim()); }}
+                      className="w-full"
+                    >
+                      <div className="relative group">
+                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-gold/20 via-transparent to-gold/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
+                        <div className="relative glass-strong rounded-2xl">
+                          <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder="e.g. Send 0.001 ETH to 0x... privately"
+                            className="w-full bg-transparent rounded-2xl px-6 py-5 pr-28 text-[15px] font-mono text-text placeholder:text-text-3/40 focus:outline-none input-glow"
+                            autoFocus
+                          />
+                          <button
+                            type="submit"
+                            disabled={!inputValue.trim()}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 px-5 py-2.5 rounded-xl bg-gold/10 border border-gold/20 font-mono text-[12px] text-gold hover:bg-gold/20 hover:border-gold/30 transition-all disabled:opacity-20 disabled:pointer-events-none"
+                          >
+                            Execute
+                          </button>
+                        </div>
+                      </div>
+                    </motion.form>
+
+                    {/* Quick tasks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mt-6">
+                      {QUICK_TASKS.map((qt, i) => (
+                        <motion.button
+                          key={qt.label}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.35 + i * 0.08 }}
+                          onClick={() => handleSubmit(qt.task)}
+                          className="text-left glass rounded-xl px-4 py-4 hover:border-white/[0.1] transition-all group stat-card"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-text-3 group-hover:text-gold transition-colors">
+                              {qt.icon}
+                            </div>
+                            <span className="text-[10px] font-mono text-text-3/60 uppercase tracking-wider">
+                              {qt.method}
+                            </span>
+                          </div>
+                          <span className="text-[13px] text-text block">{qt.label}</span>
+                          <span className="text-[11px] text-text-3 font-mono mt-0.5 block group-hover:text-text-2 transition-colors">
+                            {qt.desc}
+                          </span>
+                        </motion.button>
+                      ))}
                     </div>
-                  </form>
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mt-6">
-                    {QUICK_TASKS.map((qt, i) => (
-                      <motion.button
-                        key={qt.label}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.08 }}
-                        onClick={() => handleSubmit(qt.task)}
-                        className="text-left px-4 py-3.5 rounded-lg border border-border bg-surface hover:border-border-light hover:bg-surface-2 transition-all group"
-                      >
-                        <span className="text-lg mb-1 block">{qt.icon}</span>
-                        <span className="text-[13px] text-text block">{qt.label}</span>
-                        <span className="text-[11px] text-text-3 font-mono block mt-0.5">{qt.desc}</span>
-                        <span className="text-[10px] text-text-3/50 font-mono group-hover:text-gold transition-colors mt-1 block">
-                          via {qt.budget}
-                        </span>
-                      </motion.button>
+                  {/* Bottom stats */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="grid grid-cols-3 gap-3 mt-auto pt-8"
+                  >
+                    {[
+                      { label: "Tasks", value: stats?.taskCount ?? 0, sub: "On-chain verified", accent: false },
+                      { label: "Privacy", value: stats?.taskCount ? `${stats.privacyScore}%` : "\u2014", sub: "Aggregate score", accent: true },
+                      { label: "Vault", value: vaultBalance ? `${vaultBalance}` : "\u2014", sub: "ETH on Base Sepolia", accent: true },
+                    ].map((s) => (
+                      <div key={s.label} className="glass rounded-xl px-4 py-3.5 stat-card">
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">{s.label}</p>
+                        <p className={`text-xl font-mono ${s.accent ? "text-gold" : "text-text"}`}>{s.value}</p>
+                        <p className="text-[10px] font-mono text-text-3/60 mt-0.5">{s.sub}</p>
+                      </div>
                     ))}
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
+              )}
 
-                {/* Bottom stats — from on-chain data */}
-                <div className="grid grid-cols-3 gap-4 mt-auto pt-8">
-                  <div className="rounded-lg border border-border bg-surface px-4 py-3">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                      Tasks Completed
-                    </p>
-                    <p className="text-xl font-mono text-text">{stats?.taskCount ?? 0}</p>
-                    <p className="text-[10px] font-mono text-text-3 mt-0.5">On-chain verified</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface px-4 py-3">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                      Privacy Score
-                    </p>
-                    <p className="text-xl font-mono text-gold">
-                      {stats?.taskCount ? `${stats.privacyScore}%` : "—"}
-                    </p>
-                    <p className="text-[10px] font-mono text-text-3 mt-0.5">Aggregate</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface px-4 py-3">
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                      Vault Balance
-                    </p>
-                    <p className="text-xl font-mono text-gold">
-                      {vaultBalance ? `${vaultBalance} ETH` : "—"}
-                    </p>
-                    <p className="text-[10px] font-mono text-text-3 mt-0.5">Base Sepolia</p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
+              {/* ════════════ RUNNING STATE ════════════ */}
+              {state === "running" && (
+                <motion.div
+                  key="running"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex-1 flex flex-col items-center justify-center"
+                >
+                  <div className="w-full max-w-lg text-center">
+                    {/* Animated shield */}
+                    <div className="relative w-20 h-20 mx-auto mb-8">
+                      <div className="absolute inset-0 rounded-full bg-gold/5 animate-ping" style={{ animationDuration: "3s" }} />
+                      <div className="absolute inset-2 rounded-full bg-gold/10 animate-ping" style={{ animationDuration: "3s", animationDelay: "0.5s" }} />
+                      <div className="relative w-20 h-20 rounded-full glass flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-gold animate-pulse-dot" />
+                      </div>
+                    </div>
 
-            {/* ── Running state ── */}
-            {state === "running" && (
-              <motion.div
-                key="running"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-5"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                      Active Task
+                    <h2 className="font-serif text-2xl text-text mb-2">Processing privately</h2>
+                    <p className="text-[13px] text-text-3 mb-8 max-w-sm mx-auto">
+                      Venice AI is reasoning about your task with zero data retention.
+                      No prompts stored. No responses logged.
                     </p>
-                    <h2 className="text-lg font-mono text-text">{task}</h2>
+
+                    {/* Task */}
+                    <div className="glass rounded-xl p-4 mb-4 text-left">
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">Task</p>
+                      <p className="text-[13px] font-mono text-text truncate">{task}</p>
+                    </div>
+
+                    {/* Live activity */}
+                    <div className="glass rounded-xl p-4 text-left">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot" />
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-text-3">Live Activity</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {liveLog.slice(-4).map((entry, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-start gap-2"
+                          >
+                            <span className="text-[10px] text-text-3 font-mono shrink-0 mt-0.5 w-12">{entry.time}</span>
+                            <span className="text-[12px] text-text-2 font-mono">{entry.action}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Shimmer bar */}
+                    <div className="mt-6 h-0.5 w-full rounded-full overflow-hidden bg-white/[0.03]">
+                      <div className="h-full shimmer rounded-full" style={{ width: "100%" }} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-gold animate-pulse-dot" />
-                    <span className="text-[13px] font-mono text-gold">
-                      Agent is working...
-                    </span>
-                  </div>
-                </div>
+                </motion.div>
+              )}
 
-                {/* Live log while processing */}
-                <ActivityLog entries={liveLog} autoPlay={false} />
-
-                {/* Waiting indicator */}
-                <div className="rounded-lg border border-border bg-surface p-8 text-center">
-                  <div className="w-10 h-10 rounded-full border border-gold/30 bg-gold-glow mx-auto mb-4 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-gold animate-pulse-dot" />
-                  </div>
-                  <p className="text-[14px] text-text-2">
-                    Venice AI is reasoning privately...
-                  </p>
-                  <p className="text-[12px] text-text-3 mt-1">
-                    No prompts or responses are stored
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Complete state ── */}
-            {state === "complete" && result && (() => {
-              const isGeneral = result.taskType === "general";
-              const execFailed = result.execution && !result.execution.success;
-              const execSuccess = result.execution && result.execution.success;
-
-              return (
+              {/* ════════════ COMPLETE STATE ════════════ */}
+              {state === "complete" && result && (
                 <motion.div
                   key="complete"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.4 }}
                   className="space-y-5"
                 >
-                  {/* ── Non-executable task (like "hi") ── */}
+                  {/* Non-executable task */}
                   {isGeneral && (
-                    <div className="rounded-lg border border-border bg-surface p-10 text-center">
-                      <div className="w-10 h-10 rounded-full border border-border bg-surface-2 mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-text-3 text-lg">?</span>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="glass rounded-2xl p-10 text-center"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] mx-auto mb-5 flex items-center justify-center">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-3)" strokeWidth="1.5">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
                       </div>
-                      <h3 className="text-[16px] text-text font-medium mb-2">
-                        Not an on-chain task
-                      </h3>
-                      <p className="text-[13px] text-text-3 max-w-sm mx-auto mb-6 leading-relaxed">
-                        Shade executes privacy-preserving on-chain actions like payments,
-                        transfers, and donations. Try one of the quick tasks below or
-                        describe an on-chain action.
+                      <h3 className="text-[16px] text-text font-medium mb-2">Not an on-chain task</h3>
+                      <p className="text-[13px] text-text-3 max-w-sm mx-auto mb-2">
+                        Shade executes privacy-preserving on-chain actions — payments, transfers, and donations.
                       </p>
-                      <p className="text-[11px] font-mono text-text-3 mb-6">
-                        You said: <span className="text-text">&ldquo;{task}&rdquo;</span>
+                      <p className="text-[11px] font-mono text-text-3/60 mb-6">
+                        &ldquo;{task}&rdquo;
                       </p>
                       <button
                         onClick={handleReset}
-                        className="px-5 py-2.5 rounded-lg bg-gold/10 border border-gold/20 font-mono text-[13px] text-gold hover:bg-gold/20 transition-colors"
+                        className="px-5 py-2.5 rounded-xl glass font-mono text-[12px] text-text-2 hover:text-text transition-colors"
                       >
-                        Try Again
+                        Try again
                       </button>
-                    </div>
+                    </motion.div>
                   )}
 
-                  {/* ── Execution failed (insufficient balance, etc.) ── */}
+                  {/* Execution failed */}
                   {!isGeneral && execFailed && (
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-gold mb-1">
-                            Execution Failed
-                          </p>
+                          <p className="text-[10px] font-mono uppercase tracking-wider text-gold mb-1">Execution Failed</p>
                           <h2 className="text-lg font-mono text-text">{task}</h2>
                         </div>
-                        <button
-                          onClick={handleReset}
-                          className="px-4 py-2 rounded-lg border border-border font-mono text-[12px] text-text-3 hover:text-text hover:border-border-light transition-colors"
-                        >
+                        <button onClick={handleReset} className="px-4 py-2 rounded-xl glass font-mono text-[12px] text-text-3 hover:text-text transition-colors">
                           New Task
                         </button>
                       </div>
 
-                      <div className="rounded-lg border border-exposed/20 bg-exposed-dim p-5">
+                      <div className="rounded-xl border border-exposed/15 bg-exposed/[0.06] p-5">
                         <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 rounded-full bg-exposed mt-1.5 shrink-0" />
+                          <div className="w-8 h-8 rounded-lg bg-exposed/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="w-2 h-2 rounded-full bg-exposed" />
+                          </div>
                           <div>
                             <p className="text-[13px] text-text font-medium mb-1">
                               {result.execution!.method === "locus" ? "Locus Payment Failed" : "Vault Transfer Failed"}
                             </p>
-                            <p className="text-[12px] text-text-3 mb-3">
-                              {result.execution!.error}
-                            </p>
-                            {result.execution!.method === "locus" && (
-                              <p className="text-[11px] text-text-3 font-mono">
-                                Locus credits pending approval. Try a vault transfer instead.
-                              </p>
-                            )}
+                            <p className="text-[12px] text-text-3 mb-3">{result.execution!.error}</p>
                             {result.execution!.method === "vault" && result.execution!.error?.includes("Insufficient") && (
                               <button
                                 onClick={() => setShowDeposit(true)}
-                                className="mt-2 px-4 py-1.5 rounded-lg bg-gold/10 border border-gold/20 font-mono text-[11px] text-gold hover:bg-gold/20 transition-colors"
+                                className="px-4 py-2 rounded-lg bg-gold/10 border border-gold/20 font-mono text-[11px] text-gold hover:bg-gold/20 transition-colors"
                               >
                                 Deposit ETH to Vault
                               </button>
+                            )}
+                            {result.execution!.method === "locus" && (
+                              <p className="text-[11px] text-text-3 font-mono">Locus credits pending. Try a vault transfer instead.</p>
                             )}
                           </div>
                         </div>
@@ -469,14 +485,15 @@ export default function AppPage() {
                     </>
                   )}
 
-                  {/* ── Successful execution ── */}
+                  {/* Successful execution */}
                   {!isGeneral && execSuccess && (
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-safe mb-1">
-                            Task Complete
-                          </p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-safe" />
+                            <p className="text-[10px] font-mono uppercase tracking-wider text-safe">Task Complete</p>
+                          </div>
                           <h2 className="text-lg font-mono text-text">{task}</h2>
                         </div>
                         <div className="flex items-center gap-3">
@@ -486,21 +503,26 @@ export default function AppPage() {
                             fieldsTotal={result.fieldsHidden + result.fieldsRevealed}
                             animate={true}
                           />
-                          <button
-                            onClick={handleReset}
-                            className="px-4 py-2 rounded-lg border border-border font-mono text-[12px] text-text-3 hover:text-text hover:border-border-light transition-colors"
-                          >
+                          <button onClick={handleReset} className="px-4 py-2 rounded-xl glass font-mono text-[12px] text-text-3 hover:text-text transition-colors">
                             New Task
                           </button>
                         </div>
                       </div>
 
-                      {/* Success banner with tx link */}
-                      <div className="rounded-lg border border-safe/20 bg-safe-dim p-4">
+                      {/* Success banner */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border border-safe/15 bg-safe/[0.06] p-5"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-safe" />
-                          <div>
-                            <p className="text-[13px] font-mono text-text">
+                          <div className="w-10 h-10 rounded-xl bg-safe/10 flex items-center justify-center shrink-0">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-safe)" strokeWidth="2">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[14px] font-mono text-text">
                               {result.execution!.amount} {result.execution!.currency} sent via {result.execution!.method === "locus" ? "Locus" : "ShadeVault"}
                             </p>
                             {result.execution!.txHash && (
@@ -508,14 +530,17 @@ export default function AppPage() {
                                 href={`https://sepolia.basescan.org/tx/${result.execution!.txHash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[11px] font-mono text-gold hover:text-gold-dim transition-colors"
+                                className="text-[11px] font-mono text-gold hover:text-gold-dim transition-colors inline-flex items-center gap-1 mt-0.5"
                               >
-                                Verify on BaseScan: {result.execution!.txHash.slice(0, 20)}...
+                                Verify on BaseScan
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M7 17L17 7M17 7H7M17 7v10" />
+                                </svg>
                               </a>
                             )}
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
 
                       <ComparisonView manifest={result.disclosureManifest} task={task} />
 
@@ -532,37 +557,35 @@ export default function AppPage() {
                     </>
                   )}
                 </motion.div>
-              );
-            })()}
+              )}
 
-            {/* ── Error state ── */}
-            {state === "error" && (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex-1 flex items-center justify-center"
-              >
-                <div className="rounded-lg border border-exposed/20 bg-exposed-dim p-8 text-center max-w-md">
-                  <div className="w-2 h-2 rounded-full bg-exposed mx-auto mb-4" />
-                  <h3 className="text-[15px] text-text font-medium mb-2">
-                    Task Failed
-                  </h3>
-                  <p className="text-[13px] text-text-3 mb-4">{errorMsg}</p>
-                  <button
-                    onClick={handleReset}
-                    className="px-4 py-2 rounded-lg border border-border font-mono text-[12px] text-text-3 hover:text-text transition-colors"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </main>
+              {/* ════════════ ERROR STATE ════════════ */}
+              {state === "error" && (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex-1 flex items-center justify-center"
+                >
+                  <div className="glass rounded-2xl p-10 text-center max-w-md">
+                    <div className="w-10 h-10 rounded-xl bg-exposed/10 flex items-center justify-center mx-auto mb-4">
+                      <div className="w-2 h-2 rounded-full bg-exposed" />
+                    </div>
+                    <h3 className="text-[15px] text-text font-medium mb-2">Connection Failed</h3>
+                    <p className="text-[13px] text-text-3 mb-2">{errorMsg}</p>
+                    <p className="text-[11px] text-text-3/50 font-mono mb-6">Is the agent running? cd agent && pnpm dev</p>
+                    <button onClick={handleReset} className="px-5 py-2.5 rounded-xl glass font-mono text-[12px] text-text-2 hover:text-text transition-colors">
+                      Try again
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
 
       <DepositModal
         open={showDeposit}
