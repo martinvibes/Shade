@@ -1,0 +1,43 @@
+# Environment (NEVER commit)
+.env
+.env.local
+.env*.local
+
+# Claude
+.claude/
+CLAUDE.md
+
+# Dependencies
+node_modules/
+.pnpm-store/
+lib/
+
+# Build outputs
+dist/
+out/
+.next/
+.turbo/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Misc
+.vercel/
+.eslintcache
+docs/superpowers/

@@ -1,0 +1,23 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Shade",
+  "description": "A privacy-preserving autonomous AI agent that acts on behalf of users without exposing their identity or sensitive data. Uses Venice AI for private inference, selective disclosure engine for minimum data exposure, and ephemeral wallets for untraceable payments.",
+  "image": "",
+  "services": [
+    {
+      "name": "shade-agent",
+      "endpoint": "http://localhost:3001",
+      "version": "1.0.0",
+      "skills": ["private-payment", "vault-transfer", "anonymous-donation", "privacy-analysis"],
+      "domains": ["privacy", "payments", "identity"]
+    }
+  ],
+  "active": true,
+  "supportedTrust": ["reputation"],
+  "registrations": [
+    {
+      "agentId": 2321,
+      "agentRegistry": "eip155:84532:0x8004A818BFB912233c491871b3d84c89A494BD9e"
+    }
+  ]
+}
