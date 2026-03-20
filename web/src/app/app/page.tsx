@@ -10,6 +10,7 @@ import { ActivityLog, type LogEntry } from "@/components/ActivityLog";
 import { PrivacyScore } from "@/components/PrivacyScore";
 import { PrivacyReport } from "@/components/PrivacyReport";
 import { DepositModal } from "@/components/DepositModal";
+import { ResultTabs } from "@/components/ResultTabs";
 
 const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
 
@@ -480,8 +481,20 @@ export default function AppPage() {
                         </div>
                       </div>
 
-                      <ComparisonView manifest={result.disclosureManifest} task={task} />
-                      <ActivityLog entries={liveLog} autoPlay={false} />
+                      <ResultTabs
+                        tabs={[
+                          {
+                            id: "activity",
+                            label: "Activity Log",
+                            content: <ActivityLog entries={liveLog} autoPlay={false} />,
+                          },
+                          {
+                            id: "comparison",
+                            label: "Comparison",
+                            content: <ComparisonView manifest={result.disclosureManifest} task={task} />,
+                          },
+                        ]}
+                      />
                     </>
                   )}
 
@@ -542,18 +555,33 @@ export default function AppPage() {
                         </div>
                       </motion.div>
 
-                      <ComparisonView manifest={result.disclosureManifest} task={task} />
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <ActivityLog entries={liveLog} autoPlay={false} />
-                        <PrivacyReport
-                          task={task}
-                          cost={result.cost}
-                          fieldsHidden={result.fieldsHidden}
-                          fieldsRevealed={result.fieldsRevealed}
-                          manifest={result.disclosureManifest}
-                        />
-                      </div>
+                      <ResultTabs
+                        tabs={[
+                          {
+                            id: "comparison",
+                            label: "Comparison",
+                            content: <ComparisonView manifest={result.disclosureManifest} task={task} />,
+                          },
+                          {
+                            id: "activity",
+                            label: "Activity Log",
+                            content: <ActivityLog entries={liveLog} autoPlay={false} />,
+                          },
+                          {
+                            id: "report",
+                            label: "Privacy Report",
+                            content: (
+                              <PrivacyReport
+                                task={task}
+                                cost={result.cost}
+                                fieldsHidden={result.fieldsHidden}
+                                fieldsRevealed={result.fieldsRevealed}
+                                manifest={result.disclosureManifest}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
                     </>
                   )}
                 </motion.div>
