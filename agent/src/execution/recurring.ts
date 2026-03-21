@@ -60,12 +60,12 @@ load();
 
 // Intervals
 const INTERVALS: Record<string, { ms: number; label: string }> = {
-  "1m": { ms: 60000, label: "Every minute" },
   "5m": { ms: 300000, label: "Every 5 minutes" },
   "1h": { ms: 3600000, label: "Every hour" },
   "6h": { ms: 21600000, label: "Every 6 hours" },
   "24h": { ms: 86400000, label: "Every day" },
   "7d": { ms: 604800000, label: "Every week" },
+  "30d": { ms: 2592000000, label: "Every month" },
 };
 
 export function getIntervals() {
