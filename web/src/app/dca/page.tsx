@@ -4,6 +4,7 @@ import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Nav } from "@/components/Nav";
 import { DCAPanel } from "@/components/DCAPanel";
+import { ShadeLogo } from "@/components/ShadeLogo";
 import { motion } from "framer-motion";
 
 export default function DCAPage() {
@@ -34,12 +35,7 @@ export default function DCAPage() {
             className="mb-6"
           >
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-safe/20 to-exposed/20 flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5">
-                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                  <polyline points="16 7 22 7 22 13" />
-                </svg>
-              </div>
+              <ShadeLogo size={36} />
               <div>
                 <h1 className="text-xl text-text font-medium">Private DCA</h1>
                 <p className="text-[11px] font-mono text-text-3/60">

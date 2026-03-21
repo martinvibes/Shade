@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Nav } from "@/components/Nav";
+import { ShadeLogo } from "@/components/ShadeLogo";
 import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
@@ -121,11 +122,7 @@ export default function RecurringPage() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-gold/20 to-safe/10 flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5">
-                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                  </svg>
-                </div>
+                <ShadeLogo size={36} />
                 <div>
                   <h1 className="text-xl text-text font-medium">Recurring Payments</h1>
                   <p className="text-[11px] font-mono text-text-3/60">

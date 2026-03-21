@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ShadeLogo } from "./ShadeLogo";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useRef, type ReactNode } from "react";
 import { useAccount } from "wagmi";
@@ -113,7 +114,8 @@ export function Landing() {
     <div className="bg-bg h-screen overflow-y-auto scroll-smooth">
       {/* ── Fixed nav ── */}
       <header className="fixed top-0 left-0 right-0 z-50 px-8 py-5 flex items-center justify-between mix-blend-difference pointer-events-none">
-        <div className="flex items-center gap-2.5 pointer-events-auto">
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <ShadeLogo size={22} />
           <span className="font-mono text-[13px] font-medium tracking-[0.2em] text-white uppercase">
             Shade
           </span>

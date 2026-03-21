@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   title: "SHADE \u2014 Privacy-Preserving Autonomous Agent",
   description:
     "An AI agent that proves it can act, without exposing who sent it.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

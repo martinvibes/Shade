@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ShadeLogo } from "./ShadeLogo";
 
 const LINKS = [
   { href: "/app", label: "Agent" },
@@ -18,8 +19,8 @@ export function Nav() {
     <nav className="border-b border-border px-6 h-14 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-2 h-2 rounded-full bg-gold animate-pulse-dot" />
+        <Link href="/" className="flex items-center gap-2 group">
+          <ShadeLogo size={22} />
           <span className="font-mono text-[13px] font-medium tracking-[0.18em] text-text uppercase">
             Shade
           </span>
