@@ -13,6 +13,7 @@ import { getBaseSigner } from "./identity/erc8004.js";
 import { formatAgentIdentity } from "./identity/ens.js";
 import { classifyTask } from "./execution/task-classifier.js";
 import { executeClassifiedTask, type ExecutionResult } from "./execution/task-executor.js";
+import { classifyDCATask, createOrder, getETHPrice, type DCAOrder } from "./execution/dca-monitor.js";
 
 // ── Types ──
 
@@ -28,6 +29,7 @@ export interface TaskResult {
   intentCategory: string;
   cost: number;
   execution: ExecutionResult | null;
+  dcaOrder: DCAOrder | null;
   agentLog: string;
   logEntries: Array<{
     time: string;
@@ -104,6 +106,72 @@ export async function executeTask(
       retries: 0,
       success: true,
     });
+
+    // ── Check for DCA order ──
+    const dcaCheck = await classifyDCATask(taskDescription);
+    let dcaOrder: DCAOrder | null = null;
+
+    if (dcaCheck?.isDCA && dcaCheck.targetPrice > 0 && dcaCheck.amount > 0) {
+      const currentPrice = await getETHPrice();
+      const recipient = dcaCheck.recipient || (await getBaseSigner().signer.getAddress());
+
+      dcaOrder = createOrder({
+        type: dcaCheck.type,
+        targetPrice: dcaCheck.targetPrice,
+        amount: dcaCheck.amount,
+        currency: "ETH",
+        recipient,
+      });
+
+      log(`DCA order created: ${dcaCheck.type} $${dcaCheck.targetPrice}`, "success", `monitoring every 30s`);
+      log(`Current ETH price: $${currentPrice}`, "info", `target: $${dcaCheck.targetPrice}`);
+      log(`Will send ${dcaCheck.amount} ETH when triggered`, "privacy", "via ShadeVault");
+
+      logger.addEntry({
+        phase: "execute",
+        action: `DCA order created — ${dcaCheck.type} at $${dcaCheck.targetPrice}`,
+        toolCalls: [{ tool: "price-monitor", input: { targetPrice: dcaCheck.targetPrice, type: dcaCheck.type }, output: { orderId: dcaOrder.id, currentPrice }, duration_ms: 0 }],
+        decisions: [{
+          description: `Conditional order: send ${dcaCheck.amount} ETH when ETH ${dcaCheck.type === "price_below" ? "drops below" : "rises above"} $${dcaCheck.targetPrice}`,
+          reasoning: "DCA/conditional orders execute privately when market conditions are met",
+          alternatives: ["Immediate execution — rejected, user wants conditional"],
+        }],
+        privacyActions: [{ field: "trading_strategy", action: "hidden", reason: "Price target and strategy kept private" }],
+        retries: 0,
+        success: true,
+      });
+
+      // Skip normal execution — return DCA result
+      const manifest = determineDisclosure(
+        { description: taskDescription, budget: dcaCheck.amount, category: "dca_order" },
+        privacyLevel,
+        { needsBudgetProof: true, needsIntentCategory: true, needsIdentityProof: true },
+        ""
+      );
+      const { hidden, revealed, total } = countDisclosure(manifest);
+      const privacyScore = total > 0 ? Math.round((hidden / total) * 100) : 100;
+
+      logger.addSafetyCheck("Budget limit", dcaCheck.amount <= config.maxSpendPerTx, `${dcaCheck.amount} ETH vs limit ${config.maxSpendPerTx}`);
+      logger.addSafetyCheck("Identity hidden", true, "DCA orders execute via agent wallet");
+      log("Privacy report generated — DCA order active", "success");
+
+      return {
+        success: true,
+        task: taskDescription,
+        taskType: "dca_order",
+        disclosureManifest: manifest,
+        privacyReport: generatePrivacyReport(manifest),
+        privacyScore,
+        fieldsHidden: hidden,
+        fieldsRevealed: revealed,
+        intentCategory: "dca_order",
+        cost: dcaCheck.amount,
+        execution: null,
+        dcaOrder,
+        agentLog: JSON.stringify(logger.finalize(), null, 2),
+        logEntries: liveLog,
+      };
+    }
 
     // ── Phase 2: Disclosure Decision ──
     const ephemeralWallet = ethers.Wallet.createRandom();
@@ -269,6 +337,7 @@ export async function executeTask(
       intentCategory: classified.intentCategory,
       cost: classified.amount || 0,
       execution,
+      dcaOrder: null,
       agentLog: JSON.stringify(finalLog, null, 2),
       logEntries: liveLog,
     };
@@ -294,6 +363,7 @@ export async function executeTask(
       intentCategory: "error",
       cost: 0,
       execution: null,
+      dcaOrder: null,
       agentLog: JSON.stringify(finalLog, null, 2),
       logEntries: liveLog,
     };

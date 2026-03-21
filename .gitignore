@@ -17,6 +17,7 @@ dist/
 out/
 .next/
 .turbo/
+agent/data/
 
 # Foundry
 contracts/out/

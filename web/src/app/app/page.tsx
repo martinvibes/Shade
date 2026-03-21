@@ -10,46 +10,61 @@ import { ActivityLog, type LogEntry } from "@/components/ActivityLog";
 import { PrivacyScore } from "@/components/PrivacyScore";
 import { PrivacyReport } from "@/components/PrivacyReport";
 import { DepositModal } from "@/components/DepositModal";
+import { TaskHistory } from "@/components/TaskHistory";
 import { ResultTabs } from "@/components/ResultTabs";
 
 const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
 
-const QUICK_TASKS = [
-  {
-    label: "Private vault transfer",
-    desc: "Send 0.0001 ETH to burn address",
-    method: "ShadeVault",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-    task: "Transfer 0.0001 ETH from vault to 0x000000000000000000000000000000000000dEaD privately",
-  },
-  {
-    label: "Private USDC payment",
-    desc: "Send $1 via Locus",
-    method: "Locus",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
-      </svg>
-    ),
-    task: "Send $1 USDC to 0x000000000000000000000000000000000000dEaD privately via Locus",
-  },
-  {
-    label: "Anonymous donation",
-    desc: "Donate 0.00005 ETH",
-    method: "ShadeVault",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    ),
-    task: "Donate 0.00005 ETH anonymously to 0x000000000000000000000000000000000000dEaD",
-  },
-];
+function getQuickTasks(addr: string) {
+  return [
+    {
+      label: "Private vault transfer",
+      desc: `Send 0.0001 ETH to your wallet`,
+      method: "ShadeVault",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      ),
+      task: `Transfer 0.0001 ETH from vault to ${addr} privately`,
+    },
+    {
+      label: "Private USDC payment",
+      desc: `Send $1 via Locus`,
+      method: "Locus",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
+        </svg>
+      ),
+      task: `Send $1 USDC to ${addr} privately via Locus`,
+    },
+    {
+      label: "Anonymous donation",
+      desc: `Donate 0.0005 ETH`,
+      method: "ShadeVault",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      ),
+      task: `Donate 0.00005 ETH anonymously to ${addr}`,
+    },
+    {
+      label: "Private DCA order",
+      desc: "Auto-send when price dips",
+      method: "DCA",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+          <polyline points="16 7 22 7 22 13" />
+        </svg>
+      ),
+      task: `Send 0.0001 ETH to ${addr} when ETH price drops below $3000`,
+    },
+  ];
+}
 
 type AppState = "idle" | "running" | "complete" | "error";
 
@@ -72,6 +87,14 @@ interface TaskResult {
     currency: string;
     recipient: string;
     error?: string;
+  } | null;
+  dcaOrder: {
+    id: string;
+    type: "price_above" | "price_below";
+    targetPrice: number;
+    amount: number;
+    status: string;
+    currentPrice?: number;
   } | null;
   logEntries: Array<{ time: string; action: string; type: string; detail?: string }>;
 }
@@ -140,6 +163,7 @@ export default function AppPage() {
   }, []);
 
   const isGeneral = result?.taskType === "general";
+  const isDCA = result?.taskType === "dca_order";
   const execFailed = result?.execution && !result.execution.success;
   const execSuccess = result?.execution && result.execution.success;
 
@@ -293,8 +317,8 @@ export default function AppPage() {
                     </motion.form>
 
                     {/* Quick tasks */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mt-6">
-                      {QUICK_TASKS.map((qt, i) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-6">
+                      {getQuickTasks(address || "").map((qt, i) => (
                         <motion.button
                           key={qt.label}
                           initial={{ opacity: 0, y: 10 }}
@@ -338,6 +362,16 @@ export default function AppPage() {
                         <p className="text-[10px] font-mono text-text-3/60 mt-0.5">{s.sub}</p>
                       </div>
                     ))}
+                  </motion.div>
+
+                  {/* Transaction history */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="mt-4"
+                  >
+                    <TaskHistory refreshKey={refreshKey} />
                   </motion.div>
                 </motion.div>
               )}
@@ -418,41 +452,145 @@ export default function AppPage() {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="glass rounded-2xl p-10 text-center"
+                      className="glass rounded-2xl p-8 max-w-lg mx-auto"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] mx-auto mb-5 flex items-center justify-center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-3)" strokeWidth="1.5">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                          <line x1="12" y1="17" x2="12.01" y2="17" />
-                        </svg>
-                      </div>
-                      <h3 className="text-[16px] text-text font-medium mb-2">Not an on-chain task</h3>
-                      <p className="text-[13px] text-text-3 max-w-sm mx-auto mb-2">
-                        Shade executes privacy-preserving on-chain actions — payments, transfers, and donations.
-                      </p>
-                      <p className="text-[11px] font-mono text-text-3/60 mb-6">
-                        &ldquo;{task}&rdquo;
-                      </p>
+                      {/* Back button */}
                       <button
                         onClick={handleReset}
-                        className="px-5 py-2.5 rounded-xl glass font-mono text-[12px] text-text-2 hover:text-text transition-colors"
+                        className="text-[12px] font-mono text-text-3 hover:text-text transition-colors flex items-center gap-1.5 mb-6"
                       >
-                        Try again
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        Back
                       </button>
+
+                      {/* User message */}
+                      <div className="flex justify-end mb-4">
+                        <div className="bg-white/[0.04] rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%]">
+                          <p className="text-[13px] text-text font-mono">{task}</p>
+                        </div>
+                      </div>
+
+                      {/* Shade response */}
+                      <div className="flex justify-start">
+                        <div className="max-w-[90%]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-5 h-5 rounded-md bg-gold/10 flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-gold" />
+                            </div>
+                            <span className="text-[11px] font-mono text-gold">Shade</span>
+                          </div>
+                          <p className="text-[14px] text-text-2 leading-relaxed mb-4">
+                            I appreciate the message! But I&apos;m specifically built for private on-chain actions — I can send ETH, make payments, or donate anonymously without ever revealing your identity.
+                          </p>
+                          <p className="text-[12px] text-text-3 mb-3">Here, try one of these:</p>
+                          <div className="flex flex-col gap-2">
+                            {[
+                              { label: "Private transfer", task: `Transfer 0.0001 ETH from vault to ${address || "0x..."} privately` },
+                              { label: "Anonymous donation", task: `Donate 0.00005 ETH anonymously to ${address || "0x..."}` },
+                            ].map((example) => (
+                              <button
+                                key={example.label}
+                                onClick={() => handleSubmit(example.task)}
+                                className="text-left glass rounded-lg px-4 py-3 group hover:border-gold/20 transition-colors"
+                              >
+                                <span className="text-[12px] text-text block">{example.label}</span>
+                                <span className="text-[10px] font-mono text-text-3/50 group-hover:text-gold/60 transition-colors">
+                                  {example.task.length > 45 ? example.task.slice(0, 45) + "..." : example.task}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* DCA order created */}
+                  {isDCA && result.dcaOrder && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="glass rounded-2xl p-8 max-w-lg mx-auto"
+                    >
+                      <button
+                        onClick={handleReset}
+                        className="text-[12px] font-mono text-text-3 hover:text-text transition-colors flex items-center gap-1.5 mb-6"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        Back
+                      </button>
+
+                      <div className="flex items-start gap-4 mb-5">
+                        <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="2">
+                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                            <polyline points="16 7 22 7 22 13" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-[15px] text-text font-medium">DCA Order Active</h3>
+                          <p className="text-[12px] text-text-3 mt-1">
+                            Monitoring ETH price every 30 seconds. Will execute privately when triggered.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="glass rounded-xl p-4 space-y-3 mb-5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-text-3">Condition</span>
+                          <span className="text-[12px] font-mono text-text">
+                            ETH {result.dcaOrder.type === "price_below" ? "drops below" : "rises above"} ${result.dcaOrder.targetPrice.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-text-3">Action</span>
+                          <span className="text-[12px] font-mono text-text">
+                            Send {result.dcaOrder.amount} ETH privately
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-text-3">Current Price</span>
+                          <span className="text-[12px] font-mono text-gold">
+                            ${result.dcaOrder.currentPrice?.toLocaleString() || "..."}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-text-3">Status</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot" />
+                            <span className="text-[12px] font-mono text-gold">Monitoring</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-text-3">Method</span>
+                          <span className="text-[12px] font-mono text-text-3">ShadeVault (private)</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[11px] font-mono text-text-3/60">
+                        <div className="w-1 h-1 rounded-full bg-safe" />
+                        <span>Your identity stays hidden — agent wallet executes all trades</span>
+                      </div>
                     </motion.div>
                   )}
 
                   {/* Execution failed */}
-                  {!isGeneral && execFailed && (
+                  {!isGeneral && !isDCA && execFailed && (
                     <>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[10px] font-mono uppercase tracking-wider text-gold mb-1">Execution Failed</p>
                           <h2 className="text-lg font-mono text-text">{task}</h2>
                         </div>
-                        <button onClick={handleReset} className="px-4 py-2 rounded-xl glass font-mono text-[12px] text-text-3 hover:text-text transition-colors">
-                          New Task
+                        <button onClick={handleReset} className="px-4 py-2 rounded-xl glass font-mono text-[12px] text-text-2 hover:text-text transition-colors flex items-center gap-2">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                          </svg>
+                          Back
                         </button>
                       </div>
 
@@ -499,7 +637,7 @@ export default function AppPage() {
                   )}
 
                   {/* Successful execution */}
-                  {!isGeneral && execSuccess && (
+                  {!isGeneral && !isDCA && execSuccess && (
                     <>
                       <div className="flex items-center justify-between">
                         <div>

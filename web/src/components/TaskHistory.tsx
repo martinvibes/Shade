@@ -1,0 +1,194 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
+
+interface TaskRecord {
+  index: number;
+  taskHash: string;
+  intentCategory: string;
+  cost: string;
+  fieldsHidden: number;
+  fieldsRevealed: number;
+  success: boolean;
+  timestamp: number;
+  date: string;
+  txHash: string | null;
+}
+
+interface TaskHistoryProps {
+  refreshKey?: number;
+}
+
+function TaskRow({ t, i }: { t: TaskRecord; i: number }) {
+  const totalFields = t.fieldsHidden + t.fieldsRevealed;
+  const privacy = totalFields > 0 ? Math.round((t.fieldsHidden / totalFields) * 100) : 100;
+  const timeAgo = getTimeAgo(t.timestamp);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: i * 0.03 }}
+      className="px-4 py-3 flex items-center gap-4 hover:bg-white/[0.02] transition-colors"
+    >
+      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.success ? "bg-safe" : "bg-exposed"}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-mono text-text truncate">{t.intentCategory}</p>
+        <p className="text-[10px] font-mono text-text-3/50">{timeAgo}</p>
+      </div>
+      <span className="text-[11px] font-mono text-text-3 shrink-0">
+        {parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014"}
+      </span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <div className="w-8 h-1 rounded-full bg-white/[0.05] overflow-hidden">
+          <div className="h-full rounded-full bg-gold" style={{ width: `${privacy}%` }} />
+        </div>
+        <span className="text-[10px] font-mono text-text-3 w-7 text-right">{privacy}%</span>
+      </div>
+      {t.txHash ? (
+        <a
+          href={`https://sepolia.basescan.org/tx/${t.txHash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-text-3 hover:text-gold transition-colors"
+          title="View on BaseScan"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </a>
+      ) : (
+        <div className="w-3 shrink-0" />
+      )}
+    </motion.div>
+  );
+}
+
+export function TaskHistory({ refreshKey }: TaskHistoryProps) {
+  const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${API_BASE}/history`)
+      .then((r) => r.json())
+      .then((d) => {
+        setTasks(d.tasks || []);
+        setTotal(d.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [refreshKey]);
+
+  if (loading) {
+    return (
+      <div className="glass rounded-xl p-4">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-text-3 animate-pulse-dot" />
+          <span className="text-[11px] font-mono text-text-3">Loading history...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="glass rounded-xl p-6 text-center">
+        <p className="text-[12px] text-text-3 font-mono">No tasks yet</p>
+        <p className="text-[10px] text-text-3/50 font-mono mt-1">Execute a task to see history here</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="glass rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-text-3">
+            Recent Transactions
+          </span>
+          <span className="text-[10px] font-mono text-text-3/50">
+            {total} on-chain
+          </span>
+        </div>
+
+        <div className="divide-y divide-white/[0.03]">
+          {tasks.slice(0, 5).map((t, i) => (
+            <TaskRow key={t.index} t={t} i={i} />
+          ))}
+        </div>
+
+        {tasks.length > 5 && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="w-full px-4 py-2.5 border-t border-white/[0.04] text-[11px] font-mono text-text-3 hover:text-gold transition-colors text-center"
+          >
+            View all {total} transactions
+          </button>
+        )}
+      </div>
+
+      {/* Full history modal */}
+      <AnimatePresence>
+        {showModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowModal(false)}
+              className="fixed inset-0 bg-bg/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[70vh] flex flex-col"
+            >
+              <div className="rounded-xl border border-border bg-surface flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-white/[0.04] flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="text-[14px] text-text font-medium">Transaction History</h3>
+                    <p className="text-[11px] font-mono text-text-3 mt-0.5">{total} tasks verified on-chain</p>
+                  </div>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-text-3 hover:text-text transition-colors text-lg leading-none px-1"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                {/* Scrollable list */}
+                <div className="overflow-y-auto divide-y divide-white/[0.03]">
+                  {tasks.map((t, i) => (
+                    <TaskRow key={t.index} t={t} i={i} />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function getTimeAgo(timestamp: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - timestamp;
+
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}

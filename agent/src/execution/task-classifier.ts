@@ -17,48 +17,97 @@ export interface ClassifiedTask {
  */
 export async function classifyTask(taskDescription: string): Promise<ClassifiedTask> {
   const result = await privateInference(
-    `You are a task classifier for a privacy-preserving agent. Given a user task, determine:
+    `You are a task classifier for a privacy-preserving crypto agent on Ethereum. Given a user task, determine:
 
 1. "type": one of:
-   - "private_payment" — sending money to someone privately
-   - "anonymous_donation" — donating to a project/cause anonymously
-   - "vault_transfer" — funding a wallet or moving funds privately
-   - "general" — anything else
+   - "vault_transfer" — sending/transferring ETH to an address (DEFAULT if an address and amount are present)
+   - "private_payment" — sending USDC via Locus (only if user says USDC or Locus or dollar amount with $)
+   - "anonymous_donation" — donating (only if user explicitly says donate/donation)
+   - "general" — no address or amount present, or not a transaction
 
-2. "recipientAddress": the Ethereum address to send to (null if not specified)
-3. "amount": the numeric amount (null if not specified)
-4. "currency": "USDC" or "ETH"
-5. "description": a one-sentence description of what to do
-6. "intentCategory": a broad category like "payment", "donation", "transfer", "funding"
+2. "recipientAddress": the full 0x Ethereum address (null if none found). ALWAYS include the full address exactly as written.
+3. "amount": the numeric amount (null if not specified). If user says "0.0003" that means 0.0003.
+4. "currency": "USDC" if user mentions dollars/$, otherwise "ETH"
+5. "description": a one-sentence description
+6. "intentCategory": "transfer", "payment", or "donation"
 
-Respond ONLY with valid JSON. No markdown, no explanation.
+IMPORTANT RULES:
+- If a user provides an amount and an Ethereum address, it is ALWAYS a vault_transfer (not general)
+- "transfer 0.0003 to 0xABC..." is a vault_transfer with amount 0.0003 ETH
+- "send 0.001 to 0xABC..." is a vault_transfer with amount 0.001 ETH
+- Only classify as "general" if there is NO address AND NO amount
+- Default currency is ETH unless user explicitly says USDC or uses $
 
-Example:
-Task: "Send $2 USDC to 0x1234...abcd privately"
-{"type":"private_payment","recipientAddress":"0x1234...abcd","amount":2,"currency":"USDC","description":"Send $2 USDC privately to recipient","intentCategory":"payment"}
+Respond ONLY with valid JSON. No markdown, no explanation, no thinking.
 
-Task: "Donate 0.005 ETH to public goods anonymously"
-{"type":"anonymous_donation","recipientAddress":null,"amount":0.005,"currency":"ETH","description":"Anonymous donation to public goods","intentCategory":"donation"}`,
+Examples:
+Task: "transfer 0.0003 to 0x1234abcd"
+{"type":"vault_transfer","recipientAddress":"0x1234abcd","amount":0.0003,"currency":"ETH","description":"Transfer 0.0003 ETH privately","intentCategory":"transfer"}
+
+Task: "Send $2 USDC to 0x1234abcd via Locus"
+{"type":"private_payment","recipientAddress":"0x1234abcd","amount":2,"currency":"USDC","description":"Send $2 USDC privately","intentCategory":"payment"}
+
+Task: "send 0.001 to 0xABCD privately"
+{"type":"vault_transfer","recipientAddress":"0xABCD","amount":0.001,"currency":"ETH","description":"Transfer 0.001 ETH privately","intentCategory":"transfer"}
+
+Task: "hello"
+{"type":"general","recipientAddress":null,"amount":null,"currency":"ETH","description":"Greeting","intentCategory":"general"}`,
     taskDescription,
     { temperature: 0.1 }
   );
 
   try {
-    const parsed = JSON.parse(result);
-    return {
+    // Strip any markdown or thinking tags
+    const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    let classified: ClassifiedTask = {
       type: parsed.type || "general",
       recipientAddress: parsed.recipientAddress || null,
-      amount: parsed.amount || null,
-      currency: parsed.currency || "USDC",
+      amount: parsed.amount ?? null,
+      currency: parsed.currency || "ETH",
       description: parsed.description || taskDescription,
       intentCategory: parsed.intentCategory || "general",
     };
+
+    // Safety net: if AI missed it but there's clearly an address + amount, force vault_transfer
+    if (classified.type === "general") {
+      const addressMatch = taskDescription.match(/0x[a-fA-F0-9]{40}/);
+      const amountMatch = taskDescription.match(/(\d+\.?\d*)/);
+      if (addressMatch && amountMatch) {
+        classified = {
+          type: "vault_transfer",
+          recipientAddress: addressMatch[0],
+          amount: parseFloat(amountMatch[1]),
+          currency: taskDescription.toLowerCase().includes("usdc") || taskDescription.includes("$") ? "USDC" : "ETH",
+          description: `Transfer ${amountMatch[1]} ETH privately`,
+          intentCategory: "transfer",
+        };
+      }
+    }
+
+    return classified;
   } catch {
+    // Fallback: try to extract address and amount from the raw text
+    const addressMatch = taskDescription.match(/0x[a-fA-F0-9]{40}/);
+    const amountMatch = taskDescription.match(/(\d+\.?\d*)/);
+
+    if (addressMatch && amountMatch) {
+      return {
+        type: "vault_transfer",
+        recipientAddress: addressMatch[0],
+        amount: parseFloat(amountMatch[1]),
+        currency: taskDescription.toLowerCase().includes("usdc") || taskDescription.includes("$") ? "USDC" : "ETH",
+        description: `Transfer ${amountMatch[1]} ETH privately`,
+        intentCategory: "transfer",
+      };
+    }
+
     return {
       type: "general",
       recipientAddress: null,
       amount: null,
-      currency: "USDC",
+      currency: "ETH",
       description: taskDescription,
       intentCategory: "general",
     };

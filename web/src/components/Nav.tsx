@@ -6,6 +6,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const LINKS = [
   { href: "/app", label: "Agent" },
+  { href: "/dca", label: "DCA" },
   { href: "/demo", label: "Demo" },
 ];
 
