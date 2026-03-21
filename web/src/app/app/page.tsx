@@ -12,59 +12,64 @@ import { PrivacyReport } from "@/components/PrivacyReport";
 import { DepositModal } from "@/components/DepositModal";
 import { TaskHistory } from "@/components/TaskHistory";
 import { ResultTabs } from "@/components/ResultTabs";
+import { QRPayment } from "@/components/QRPayment";
+import dynamic from "next/dynamic";
+const ExportPDF = dynamic(() => import("@/components/ExportPDF").then(m => ({ default: m.ExportPDF })), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
 
-function getQuickTasks(addr: string) {
-  return [
-    {
-      label: "Private vault transfer",
-      desc: `Send 0.0001 ETH to your wallet`,
-      method: "ShadeVault",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      ),
-      task: `Transfer 0.0001 ETH from vault to ${addr} privately`,
-    },
-    {
-      label: "Private USDC payment",
-      desc: `Send $1 via Locus`,
-      method: "Locus",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
-        </svg>
-      ),
-      task: `Send $1 USDC to ${addr} privately via Locus`,
-    },
-    {
-      label: "Anonymous donation",
-      desc: `Donate 0.0005 ETH`,
-      method: "ShadeVault",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
-      ),
-      task: `Donate 0.00005 ETH anonymously to ${addr}`,
-    },
-    {
-      label: "Private DCA order",
-      desc: "Auto-send when price dips",
-      method: "DCA",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-          <polyline points="16 7 22 7 22 13" />
-        </svg>
-      ),
-      task: `Send 0.0001 ETH to ${addr} when ETH price drops below $3000`,
-    },
-  ];
-}
+const QUICK_TASKS = [
+  {
+    label: "Send ETH privately",
+    desc: "Transfer ETH without revealing your identity",
+    hint: "Click to fill template",
+    method: "ShadeVault",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+    template: "Send 0.0001 ETH to [paste address or ENS here] privately",
+  },
+  {
+    label: "Pay with USDC",
+    desc: "Private USDC payment via Locus",
+    hint: "Click to fill template",
+    method: "Locus",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
+      </svg>
+    ),
+    template: "Send $1 USDC to [paste address or ENS] via Locus",
+  },
+  {
+    label: "Donate anonymously",
+    desc: "Support a cause no one knows it was you",
+    hint: "Click to fill template",
+    method: "ShadeVault",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
+    ),
+    template: "Donate 0.0005 ETH anonymously to [paste address or ENS here]",
+  },
+  {
+    label: "Set price alert",
+    desc: "Auto-execute when ETH hits your target",
+    hint: "Click to fill template",
+    method: "DCA",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+        <polyline points="16 7 22 7 22 13" />
+      </svg>
+    ),
+    template: "Send 0.0001 ETH to [paste address or ENS] when ETH drops below $2000",
+  },
+];
 
 type AppState = "idle" | "running" | "complete" | "error";
 
@@ -118,6 +123,7 @@ export default function AppPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [vaultBalance, setVaultBalance] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -194,13 +200,14 @@ export default function AppPage() {
                   <span className="text-white/[0.08]">|</span>
                   <button
                     onClick={() => setShowDeposit(true)}
-                    className="flex items-center gap-1.5 text-[11px] font-mono text-text-3 hover:text-gold transition-colors group"
+                    className="flex items-center gap-1.5 text-[11px] font-mono text-text-3 hover:text-gold transition-colors group px-2.5 py-1 rounded-lg hover:bg-gold/5 -mx-1"
                   >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gold/60 group-hover:text-gold">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gold/60 group-hover:text-gold">
                       <rect x="2" y="6" width="20" height="14" rx="2" />
                       <path d="M2 10h20" />
                     </svg>
                     <span className="text-gold">{vaultBalance || "0"} ETH</span>
+                    <span className="text-[9px] text-text-3/40 group-hover:text-gold/60 transition-colors">Deposit</span>
                   </button>
                   <span className="text-white/[0.08]">|</span>
                   <span className="text-[11px] font-mono text-text-3">
@@ -318,14 +325,14 @@ export default function AppPage() {
 
                     {/* Quick tasks */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-6">
-                      {getQuickTasks(address || "").map((qt, i) => (
+                      {QUICK_TASKS.map((qt, i) => (
                         <motion.button
                           key={qt.label}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.35 + i * 0.08 }}
-                          onClick={() => handleSubmit(qt.task)}
-                          className="text-left glass rounded-xl px-4 py-4 hover:border-white/[0.1] transition-all group stat-card"
+                          onClick={() => setInputValue(qt.template)}
+                          className="text-left glass rounded-xl px-4 py-4 hover:border-white/[0.1] transition-all group stat-card cursor-pointer"
                         >
                           <div className="flex items-center gap-3 mb-2">
                             <div className="w-8 h-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-text-3 group-hover:text-gold transition-colors">
@@ -336,8 +343,11 @@ export default function AppPage() {
                             </span>
                           </div>
                           <span className="text-[13px] text-text block">{qt.label}</span>
-                          <span className="text-[11px] text-text-3 font-mono mt-0.5 block group-hover:text-text-2 transition-colors">
+                          <span className="text-[11px] text-text-3 mt-0.5 block">
                             {qt.desc}
+                          </span>
+                          <span className="text-[9px] font-mono text-gold/0 group-hover:text-gold/60 mt-1.5 block transition-colors">
+                            {qt.hint} &rarr;
                           </span>
                         </motion.button>
                       ))}
@@ -349,19 +359,31 @@ export default function AppPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="grid grid-cols-3 gap-3 mt-auto pt-8"
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-auto pt-8"
                   >
                     {[
                       { label: "Tasks", value: stats?.taskCount ?? 0, sub: "On-chain verified", accent: false },
+                      { label: "Success", value: stats?.successCount ?? 0, sub: "Completed", accent: false },
                       { label: "Privacy", value: stats?.taskCount ? `${stats.privacyScore}%` : "\u2014", sub: "Aggregate score", accent: true },
-                      { label: "Vault", value: vaultBalance ? `${vaultBalance}` : "\u2014", sub: "ETH on Base Sepolia", accent: true },
                     ].map((s) => (
-                      <div key={s.label} className="glass rounded-xl px-4 py-3.5 stat-card">
+                      <div key={s.label} className="glass rounded-xl px-4 py-3.5">
                         <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">{s.label}</p>
                         <p className={`text-xl font-mono ${s.accent ? "text-gold" : "text-text"}`}>{s.value}</p>
                         <p className="text-[10px] font-mono text-text-3/60 mt-0.5">{s.sub}</p>
                       </div>
                     ))}
+
+                    {/* Vault deposit card */}
+                    <button
+                      onClick={() => setShowDeposit(true)}
+                      className="glass rounded-xl px-4 py-3.5 stat-card text-left group hover:border-gold/20 transition-colors cursor-pointer"
+                    >
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">Vault Balance</p>
+                      <p className="text-xl font-mono text-gold">{vaultBalance ? `${vaultBalance}` : "\u2014"} <span className="text-[12px] text-text-3/40">ETH</span></p>
+                      <p className="text-[10px] font-mono text-text-3/40 group-hover:text-gold/60 mt-0.5 transition-colors">
+                        Click to deposit &rarr;
+                      </p>
+                    </button>
                   </motion.div>
 
                   {/* Transaction history */}
@@ -693,6 +715,60 @@ export default function AppPage() {
                         </div>
                       </motion.div>
 
+                      {/* Action buttons */}
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl glass hover:border-gold/20 transition-colors cursor-pointer group"
+                          onClick={() => {
+                            const el = document.querySelector<HTMLButtonElement>('[data-export-pdf]');
+                            el?.click();
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                          </div>
+                          <div>
+                            <span className="text-[12px] text-text block">Export Report</span>
+                            <span className="text-[10px] text-text-3/50 font-mono">Download PDF audit log</span>
+                          </div>
+                        </div>
+                        <div className="hidden">
+                          <ExportPDF
+                            task={task}
+                            privacyScore={result.privacyScore}
+                            fieldsHidden={result.fieldsHidden}
+                            fieldsRevealed={result.fieldsRevealed}
+                            intentCategory={result.intentCategory}
+                            cost={result.cost}
+                            logEntries={liveLog}
+                            manifest={result.disclosureManifest}
+                            execution={result.execution}
+                          />
+                        </div>
+                        <button
+                          onClick={() => setShowQR(true)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl glass hover:border-gold/20 transition-colors cursor-pointer group text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5">
+                              <rect x="3" y="3" width="7" height="7" />
+                              <rect x="14" y="3" width="7" height="7" />
+                              <rect x="3" y="14" width="7" height="7" />
+                              <rect x="14" y="14" width="3" height="3" />
+                              <line x1="21" y1="14" x2="21" y2="21" />
+                              <line x1="14" y1="21" x2="21" y2="21" />
+                            </svg>
+                          </div>
+                          <div>
+                            <span className="text-[12px] text-text block">Payment QR</span>
+                            <span className="text-[10px] text-text-3/50 font-mono">Scannable payment link</span>
+                          </div>
+                        </button>
+                      </div>
+
                       <ResultTabs
                         tabs={[
                           {
@@ -758,6 +834,10 @@ export default function AppPage() {
         onClose={() => setShowDeposit(false)}
         onSuccess={() => setRefreshKey((k) => k + 1)}
         vaultBalance={vaultBalance}
+      />
+      <QRPayment
+        open={showQR}
+        onClose={() => setShowQR(false)}
       />
     </div>
   );

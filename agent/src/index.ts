@@ -202,7 +202,8 @@ app.get("/history", async (_req, res) => {
 
     res.json({ total: count, tasks });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    // Return empty history instead of 500 — prevents console errors
+    res.json({ total: 0, tasks: [], error: error.message });
   }
 });
 
@@ -311,6 +312,31 @@ app.post("/dca/cancel/:id", async (req, res) => {
   }
 });
 
+// ── ENS Resolution ──
+app.get("/ens/resolve/:name", async (req, res) => {
+  try {
+    const { resolveENS } = await import("./identity/ens.js");
+    const address = await resolveENS(req.params.name);
+    if (address) {
+      res.json({ name: req.params.name, address, resolved: true });
+    } else {
+      res.json({ name: req.params.name, address: null, resolved: false });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/ens/lookup/:address", async (req, res) => {
+  try {
+    const { lookupENS } = await import("./identity/ens.js");
+    const name = await lookupENS(req.params.address);
+    res.json({ address: req.params.address, name, resolved: name !== null });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ── DCA: Price + Chart cache ──
 let priceCache: { price: number; change24h: number; timestamp: number } | null = null;
 let chartCache: { line: any[]; ohlc: any[]; fetchedAt: number } | null = null;
@@ -331,15 +357,25 @@ async function refreshPriceCache() {
 
 async function refreshChartCache() {
   try {
-    const [lineRes, ohlcRes] = await Promise.all([
-      fetch("https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=1"),
-      fetch("https://api.coingecko.com/api/v3/coins/ethereum/ohlc?vs_currency=usd&days=1"),
-    ]);
+    const lineRes = await fetch("https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=1");
     const lineData = await lineRes.json();
-    const ohlcData = await ohlcRes.json();
+    
+    const prices = lineData.prices || [];
+    const chunkSize = Math.max(1, Math.floor(prices.length / 96));
+    const ohlc = [];
+    
+    for (let i = 0; i < prices.length; i += chunkSize) {
+      const chunk = prices.slice(i, i + chunkSize);
+      const open = chunk[0][1];
+      const close = chunk[chunk.length - 1][1];
+      const high = Math.max(...chunk.map((p: any) => p[1]));
+      const low = Math.min(...chunk.map((p: any) => p[1]));
+      ohlc.push([chunk[0][0], open, high, low, close]);
+    }
+    
     chartCache = {
-      line: lineData.prices || [],
-      ohlc: Array.isArray(ohlcData) ? ohlcData : [],
+      line: prices,
+      ohlc,
       fetchedAt: Date.now(),
     };
   } catch { /* keep old cache */ }
@@ -360,6 +396,49 @@ app.get("/dca/price", async (_req, res) => {
 app.get("/dca/chart", async (_req, res) => {
   if (!chartCache) await refreshChartCache();
   res.json(chartCache || { line: [], ohlc: [] });
+});
+
+// ── Recurring Payments ──
+app.post("/recurring/create", async (req, res) => {
+  const { recipient, amount, interval } = req.body;
+  if (!recipient || !amount || !interval) {
+    res.status(400).json({ error: "recipient, amount, and interval required" });
+    return;
+  }
+  try {
+    const { createRecurring } = await import("./execution/recurring.js");
+    const payment = await createRecurring(recipient, amount, interval);
+    res.json({ payment });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/recurring/list", async (_req, res) => {
+  try {
+    const { getRecurringPayments } = await import("./execution/recurring.js");
+    res.json({ payments: getRecurringPayments() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/recurring/cancel/:id", async (req, res) => {
+  try {
+    const { cancelRecurring } = await import("./execution/recurring.js");
+    res.json({ cancelled: cancelRecurring(req.params.id) });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/recurring/intervals", async (_req, res) => {
+  try {
+    const { getIntervals } = await import("./execution/recurring.js");
+    res.json({ intervals: getIntervals() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ── Start server ──

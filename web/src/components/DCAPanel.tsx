@@ -33,7 +33,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
   const [change24h, setChange24h] = useState<number>(0);
   const [chartData, setChartData] = useState<[number, number][]>([]);
   const [ohlcData, setOhlcData] = useState<[number, number, number, number, number][]>([]); // [time, open, high, low, close]
-  const [chartMode, setChartMode] = useState<ChartMode>("candle");
+  const [chartMode, setChartMode] = useState<ChartMode>("line");
   const [loading, setLoading] = useState(true);
 
   // Form
@@ -45,35 +45,53 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
   const [showForm, setShowForm] = useState(false);
   const [chartHover, setChartHover] = useState<{ x: number; price: number } | null>(null);
 
-  // Fetch price + charts via backend (avoids CORS + rate limits)
+  // Fetch price first (fast), then chart (heavier) — don't block each other
   useEffect(() => {
-    async function loadPrice() {
-      try {
-        const [priceRes, chartRes] = await Promise.all([
-          fetch(`${API_BASE}/dca/price`),
-          fetch(`${API_BASE}/dca/chart`),
-        ]);
-        const priceData = await priceRes.json();
-        const chartDataRaw = await chartRes.json();
-
-        setCurrentPrice(priceData.price || 0);
-        setChange24h(priceData.change24h || 0);
-        if (chartDataRaw.line) setChartData(chartDataRaw.line);
-        if (chartDataRaw.ohlc) setOhlcData(chartDataRaw.ohlc);
-      } catch { /* */ } finally {
-        setLoading(false);
-      }
-    }
-    loadPrice();
-
-    // Refresh price every 30s via backend
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/dca/price`);
-        const d = await res.json();
+    // Price loads first — instant from cached backend
+    fetch(`${API_BASE}/dca/price`)
+      .then((r) => r.json())
+      .then((d) => {
         setCurrentPrice(d.price || 0);
-        if (d.change24h) setChange24h(d.change24h);
-      } catch { /* */ }
+        setChange24h(d.change24h || 0);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+
+    // Chart loads separately — doesn't block price display
+    fetch(`${API_BASE}/dca/chart`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.line) {
+          setChartData(d.line);
+          
+          // Generate denser 10-minute candles from the 5-minute line data (288 points -> 144 candles)
+          const chunkSize = 2;
+          const prices = d.line;
+          const generatedOhlc: [number, number, number, number, number][] = [];
+          
+          for (let i = 0; i < prices.length; i += chunkSize) {
+            const chunk = prices.slice(i, i + chunkSize);
+            const open = chunk[0][1];
+            const close = chunk[chunk.length - 1][1];
+            const high = Math.max(...chunk.map((p: [number, number]) => p[1]));
+            const low = Math.min(...chunk.map((p: [number, number]) => p[1]));
+            generatedOhlc.push([chunk[0][0], open, high, low, close]);
+          }
+          
+          setOhlcData(generatedOhlc);
+        }
+      })
+      .catch(() => {});
+
+    // Refresh price every 30s
+    const interval = setInterval(() => {
+      fetch(`${API_BASE}/dca/price`)
+        .then((r) => r.json())
+        .then((d) => {
+          setCurrentPrice(d.price || 0);
+          if (d.change24h) setChange24h(d.change24h);
+        })
+        .catch(() => {});
     }, 30000);
 
     return () => clearInterval(interval);
@@ -249,7 +267,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
         </div>
 
         {/* Chart */}
-        <div className="h-56 w-full relative px-2 pb-3">
+        <div className="h-72 w-full relative px-2 pb-3">
           {/* ── Line Chart ── */}
           {chartMode === "line" && chartData.length > 10 && (
             <svg
@@ -301,8 +319,8 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
 
           {/* ── Candlestick Chart ── */}
           {chartMode === "candle" && ohlcData.length > 3 && (() => {
-            const candleSpacing = 6;
-            const candleWidth = 4;
+            const candleSpacing = 10;
+            const candleWidth = 7;
             const totalWidth = ohlcData.length * candleSpacing;
 
             return (
@@ -593,29 +611,27 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[14px] font-mono text-text font-medium tabular-nums">
-                        ${order.targetPrice.toLocaleString()}
+                    <p className="text-[13px] text-text mb-0.5">
+                      When ETH {order.type === "price_below" ? "drops below" : "rises above"}{" "}
+                      <span className="font-mono font-medium">${order.targetPrice.toLocaleString()}</span>
+                      <span className={`text-[11px] font-mono ml-1.5 ${distPercent < 0 ? "text-safe" : "text-text-3/50"}`}>
+                        ({distPercent > 0 ? "+" : ""}{distPercent.toFixed(1)}% away)
                       </span>
-                      <span className={`text-[11px] font-mono ${distPercent < 0 ? "text-safe" : "text-text-3"}`}>
-                        {distPercent > 0 ? "+" : ""}{distPercent.toFixed(1)}%
-                      </span>
-                    </div>
-                    <p className="text-[11px] font-mono text-text-3/50">
-                      {order.amount} ETH &rarr; {order.recipient.slice(0, 8)}...{order.recipient.slice(-4)}
                     </p>
-                  </div>
-
-                  {/* Progress indicator */}
-                  <div className="w-16 shrink-0">
-                    <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
-                      <motion.div
-                        className={`h-full rounded-full ${order.type === "price_below" ? "bg-exposed/50" : "bg-safe/50"}`}
-                        initial={{ width: "0%" }}
-                        animate={{
-                          width: `${Math.min(100, Math.max(5, 100 - Math.abs(distPercent) * 10))}%`,
-                        }}
-                      />
+                    <p className="text-[11px] font-mono text-text-3/50">
+                      Send <span className="text-gold">{order.amount} ETH</span> to {order.recipient.slice(0, 8)}...{order.recipient.slice(-4)} via ShadeVault
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="flex-1 h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${order.type === "price_below" ? "bg-exposed/50" : "bg-safe/50"}`}
+                          initial={{ width: "0%" }}
+                          animate={{ width: `${Math.min(100, Math.max(5, 100 - Math.abs(distPercent) * 10))}%` }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono text-text-3/40 shrink-0">
+                        ${Math.abs(currentPrice - order.targetPrice).toFixed(0)} away
+                      </span>
                     </div>
                   </div>
 
@@ -645,19 +661,29 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
           <div className="divide-y divide-white/[0.03]">
             {pastOrders.slice(0, 5).map((order) => (
               <div key={order.id} className="px-5 py-3.5 flex items-center gap-4">
-                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  order.status === "triggered" ? "bg-safe" : order.status === "cancelled" ? "bg-text-3/30" : "bg-exposed"
-                }`} />
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  order.status === "triggered" ? "bg-safe/10" : order.status === "cancelled" ? "bg-white/[0.03]" : "bg-exposed/10"
+                }`}>
+                  {order.status === "triggered" ? (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--color-safe)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                  ) : order.status === "cancelled" ? (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-3)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  ) : (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--color-exposed)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-[12px] font-mono text-text-2 tabular-nums">
-                    ${order.targetPrice.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] font-mono text-text-3/40 ml-2">
-                    {order.amount} ETH
-                  </span>
-                  <span className="text-[10px] font-mono text-text-3/30 ml-2">
-                    {order.status === "triggered" ? "Executed" : order.status === "cancelled" ? "Cancelled" : "Failed"}
-                  </span>
+                  <p className="text-[12px] text-text-2 mb-0.5">
+                    {order.type === "price_below" ? "Below" : "Above"} <span className="font-mono">${order.targetPrice.toLocaleString()}</span>
+                    {" \u2192 "}
+                    <span className="text-gold font-mono">{order.amount} ETH</span>
+                    {" to "}
+                    <span className="font-mono text-text-3">{order.recipient.slice(0, 6)}...{order.recipient.slice(-4)}</span>
+                  </p>
+                  <p className="text-[10px] font-mono text-text-3/40">
+                    {order.status === "triggered" ? "Executed privately via ShadeVault" : order.status === "cancelled" ? "Cancelled by user" : "Failed to execute"}
+                    {order.triggeredAt ? ` \u2022 ${getTimeAgo(Math.floor(order.triggeredAt / 1000))}` : ""}
+                  </p>
                 </div>
                 {order.txHash && (
                   <a
@@ -702,4 +728,13 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
       )}
     </div>
   );
+}
+
+function getTimeAgo(timestamp: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - timestamp;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }

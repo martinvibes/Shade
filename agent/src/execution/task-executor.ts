@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { config } from "../config.js";
 import { getBaseSigner } from "../identity/erc8004.js";
 import { sendPayment, getBalance } from "../payments/locus.js";
+import { resolveRecipient, isENSName } from "../identity/ens.js";
 import type { ClassifiedTask } from "./task-classifier.js";
 
 export interface ExecutionResult {
@@ -24,10 +25,29 @@ const VAULT_ABI = [
 
 /**
  * Execute a classified task — real on-chain actions, not simulations.
+ * Resolves ENS names to addresses before execution.
  */
 export async function executeClassifiedTask(
   task: ClassifiedTask
 ): Promise<ExecutionResult> {
+  // Resolve ENS names to addresses
+  if (task.recipientAddress && isENSName(task.recipientAddress)) {
+    const resolved = await resolveRecipient(task.recipientAddress);
+    if (!resolved.address) {
+      return {
+        success: false,
+        txHash: null,
+        method: "none",
+        amount: task.amount || 0,
+        currency: task.currency,
+        recipient: task.recipientAddress,
+        error: `Could not resolve ENS name: ${task.recipientAddress}`,
+      };
+    }
+    console.log(`[ENS] Resolved ${task.recipientAddress} → ${resolved.address}`);
+    task.recipientAddress = resolved.address;
+  }
+
   switch (task.type) {
     case "private_payment":
       return executePrivatePayment(task);

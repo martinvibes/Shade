@@ -25,17 +25,19 @@ export async function classifyTask(taskDescription: string): Promise<ClassifiedT
    - "anonymous_donation" — donating (only if user explicitly says donate/donation)
    - "general" — no address or amount present, or not a transaction
 
-2. "recipientAddress": the full 0x Ethereum address (null if none found). ALWAYS include the full address exactly as written.
+2. "recipientAddress": the recipient — either a full 0x address OR an ENS name ending in .eth (e.g. "vitalik.eth"). Include it exactly as written.
 3. "amount": the numeric amount (null if not specified). If user says "0.0003" that means 0.0003.
 4. "currency": "USDC" if user mentions dollars/$, otherwise "ETH"
 5. "description": a one-sentence description
 6. "intentCategory": "transfer", "payment", or "donation"
 
 IMPORTANT RULES:
-- If a user provides an amount and an Ethereum address, it is ALWAYS a vault_transfer (not general)
+- If a user provides an amount and an address OR ENS name, it is ALWAYS a vault_transfer (not general)
 - "transfer 0.0003 to 0xABC..." is a vault_transfer with amount 0.0003 ETH
+- "send 0.001 to vitalik.eth" is a vault_transfer with recipientAddress "vitalik.eth"
 - "send 0.001 to 0xABC..." is a vault_transfer with amount 0.001 ETH
-- Only classify as "general" if there is NO address AND NO amount
+- ENS names like "name.eth" are valid recipients — keep them as-is, the agent will resolve them
+- Only classify as "general" if there is NO address/ENS name AND NO amount
 - Default currency is ETH unless user explicitly says USDC or uses $
 
 Respond ONLY with valid JSON. No markdown, no explanation, no thinking.
@@ -49,6 +51,9 @@ Task: "Send $2 USDC to 0x1234abcd via Locus"
 
 Task: "send 0.001 to 0xABCD privately"
 {"type":"vault_transfer","recipientAddress":"0xABCD","amount":0.001,"currency":"ETH","description":"Transfer 0.001 ETH privately","intentCategory":"transfer"}
+
+Task: "send 0.0001 ETH to vitalik.eth"
+{"type":"vault_transfer","recipientAddress":"vitalik.eth","amount":0.0001,"currency":"ETH","description":"Transfer 0.0001 ETH to vitalik.eth privately","intentCategory":"transfer"}
 
 Task: "hello"
 {"type":"general","recipientAddress":null,"amount":null,"currency":"ETH","description":"Greeting","intentCategory":"general"}`,
@@ -70,14 +75,16 @@ Task: "hello"
       intentCategory: parsed.intentCategory || "general",
     };
 
-    // Safety net: if AI missed it but there's clearly an address + amount, force vault_transfer
+    // Safety net: if AI missed it but there's clearly an address/ENS + amount, force vault_transfer
     if (classified.type === "general") {
       const addressMatch = taskDescription.match(/0x[a-fA-F0-9]{40}/);
+      const ensMatch = taskDescription.match(/[a-zA-Z0-9-]+\.eth\b/);
       const amountMatch = taskDescription.match(/(\d+\.?\d*)/);
-      if (addressMatch && amountMatch) {
+      const recipientFound = addressMatch?.[0] || ensMatch?.[0] || null;
+      if (recipientFound && amountMatch) {
         classified = {
           type: "vault_transfer",
-          recipientAddress: addressMatch[0],
+          recipientAddress: recipientFound,
           amount: parseFloat(amountMatch[1]),
           currency: taskDescription.toLowerCase().includes("usdc") || taskDescription.includes("$") ? "USDC" : "ETH",
           description: `Transfer ${amountMatch[1]} ETH privately`,
@@ -88,14 +95,16 @@ Task: "hello"
 
     return classified;
   } catch {
-    // Fallback: try to extract address and amount from the raw text
+    // Fallback: try to extract address/ENS and amount from the raw text
     const addressMatch = taskDescription.match(/0x[a-fA-F0-9]{40}/);
+    const ensMatch = taskDescription.match(/[a-zA-Z0-9-]+\.eth\b/);
     const amountMatch = taskDescription.match(/(\d+\.?\d*)/);
+    const recipientFound = addressMatch?.[0] || ensMatch?.[0] || null;
 
-    if (addressMatch && amountMatch) {
+    if (recipientFound && amountMatch) {
       return {
         type: "vault_transfer",
-        recipientAddress: addressMatch[0],
+        recipientAddress: recipientFound,
         amount: parseFloat(amountMatch[1]),
         currency: taskDescription.toLowerCase().includes("usdc") || taskDescription.includes("$") ? "USDC" : "ETH",
         description: `Transfer ${amountMatch[1]} ETH privately`,
