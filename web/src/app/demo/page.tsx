@@ -143,7 +143,7 @@ export default function DemoPage() {
                 <p className="text-text-3 text-[14px] max-w-md mx-auto leading-relaxed mb-4">
                   This demo executes a real on-chain transaction through the Shade agent.
                   Watch as it reasons privately, decides what to disclose, and sends
-                  real ETH from the ShadeVault — all verifiable on Base Sepolia.
+                  real ETH from the ShadeVault all verifiable on Base Sepolia.
                 </p>
                 <p className="text-text-3 text-[13px] font-mono mb-2">
                   Task: <span className="text-text">Transfer 0.00005 ETH privately</span>

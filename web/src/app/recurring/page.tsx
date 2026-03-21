@@ -144,7 +144,7 @@ export default function RecurringPage() {
             </div>
             <p className="text-[13px] text-text-3 leading-relaxed mt-3 max-w-md">
               Set up automatic payments that execute on a schedule. Every transfer
-              goes through ShadeVault — fully private, no identity exposed.
+              goes through ShadeVault fully private, no identity exposed.
             </p>
           </motion.div>
 

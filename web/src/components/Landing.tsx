@@ -168,7 +168,7 @@ export function Landing() {
           <FadeUp delay={0.2}>
             <p className="text-white/50 text-lg max-w-lg mt-8 leading-relaxed">
               An autonomous AI agent that pays, transacts, and operates
-              on your behalf — without ever revealing your identity.
+              on your behalf without ever revealing your identity.
             </p>
           </FadeUp>
           <FadeUp delay={0.3}>
@@ -414,7 +414,7 @@ export function Landing() {
           <FadeUp delay={0.2}>
             <p className="text-white/40 text-[16px] max-w-md mx-auto mb-10 leading-relaxed">
               Connect your wallet. Fund the agent. From that moment on,
-              Shade handles everything — and nothing traces back to you.
+              Shade handles everything and nothing traces back to you.
             </p>
           </FadeUp>
           <FadeUp delay={0.3}>
