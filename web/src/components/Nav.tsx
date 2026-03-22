@@ -8,7 +8,7 @@ import { ShadeLogo } from "./ShadeLogo";
 const LINKS = [
   { href: "/app", label: "Agent" },
   { href: "/dca", label: "DCA" },
-  { href: "/recurring", label: "Recurring" },
+  { href: "/recurring", label: "Auto-Pay" },
   { href: "/demo", label: "Demo" },
 ];
 
@@ -34,9 +34,9 @@ export function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-1.5 rounded text-[13px] transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-[13px] transition-colors ${
                   active
-                    ? "text-text bg-surface-2"
+                    ? "text-gold bg-gold/10 font-medium"
                     : "text-text-3 hover:text-text-2"
                 }`}
               >

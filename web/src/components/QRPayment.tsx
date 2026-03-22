@@ -72,7 +72,7 @@ export function QRPayment({ open, onClose }: QRPaymentProps) {
                       value={recipient}
                       onChange={(e) => setRecipient(e.target.value)}
                       placeholder="0x... or name.eth"
-                      className="w-full glass rounded-lg px-4 py-3 text-[13px] font-mono text-text placeholder:text-text-3/30 focus:outline-none input-glow"
+                      className="w-full glass rounded-lg px-4 py-3 text-[13px] font-mono text-text placeholder:text-text-3/60 focus:outline-none input-glow"
                     />
                   </div>
                   <div>
@@ -84,7 +84,7 @@ export function QRPayment({ open, onClose }: QRPaymentProps) {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       step="0.001"
-                      className="w-full glass rounded-lg px-4 py-3 text-[13px] font-mono text-text placeholder:text-text-3/30 focus:outline-none input-glow"
+                      className="w-full glass rounded-lg px-4 py-3 text-[13px] font-mono text-text placeholder:text-text-3/60 focus:outline-none input-glow"
                     />
                   </div>
                   <button
@@ -114,7 +114,7 @@ export function QRPayment({ open, onClose }: QRPaymentProps) {
                   <p className="text-[11px] font-mono text-text-3 mb-1">
                     To: {recipient.length > 20 ? `${recipient.slice(0, 10)}...${recipient.slice(-6)}` : recipient}
                   </p>
-                  <p className="text-[10px] text-text-3/50 mb-4">
+                  <p className="text-[10px] text-text-3/70 mb-4">
                     Scan to send a private payment via Shade
                   </p>
 
@@ -135,7 +135,7 @@ export function QRPayment({ open, onClose }: QRPaymentProps) {
                     </button>
                   </div>
 
-                  <p className="text-[9px] font-mono text-text-3/40 mt-3">
+                  <p className="text-[9px] font-mono text-text-3/70 mt-3">
                     Payment executes privately through ShadeVault
                   </p>
                 </div>

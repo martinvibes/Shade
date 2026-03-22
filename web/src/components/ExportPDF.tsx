@@ -57,7 +57,10 @@ export function ExportPDF(props: ExportPDFProps) {
     addLine(`Privacy Score: ${privacyScore}%`, 11, "#D4A853");
     addLine(`Fields Hidden: ${fieldsHidden}  |  Fields Revealed: ${fieldsRevealed}`, 10, "#A1A1AA");
     addLine(`Intent Category: ${intentCategory}`, 10, "#A1A1AA");
-    addLine(`Cost: ${cost} ETH`, 10, "#A1A1AA");
+    const costDisplay = intentCategory === "payment"
+      ? `$${(cost * 1e12).toFixed(2)} USDC`
+      : cost > 0 ? `${cost} ETH` : "—";
+    addLine(`Cost: ${costDisplay}`, 10, "#A1A1AA");
     addGap();
 
     // Execution

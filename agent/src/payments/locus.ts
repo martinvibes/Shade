@@ -7,7 +7,9 @@ const LOCUS_BASE = process.env.LOCUS_BASE_URL || "https://beta-api.paywithlocus.
 
 export interface LocusBalance {
   balance: string;
+  usdc_balance: string;
   currency: string;
+  wallet_address: string;
 }
 
 export interface LocusTransaction {
@@ -57,7 +59,7 @@ export async function sendPayment(
   const res = await fetch(`${LOCUS_BASE}/pay/send`, {
     method: "POST",
     headers: getHeaders(apiKey),
-    body: JSON.stringify({ recipient, amount, note }),
+    body: JSON.stringify({ to_address: recipient, amount, memo: note || "Shade private payment" }),
   });
   const data = await res.json();
 
@@ -65,7 +67,7 @@ export async function sendPayment(
     return { success: false, error: data.message || "Payment failed" };
   }
 
-  return { success: true, txId: data.data?.txId || data.data?.id };
+  return { success: true, txId: data.data?.transaction_id || data.data?.txId || data.data?.id };
 }
 
 /**

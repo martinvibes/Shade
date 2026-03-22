@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
+import { QRCodeSVG } from "qrcode.react";
 import { parseEther } from "viem";
 import { baseSepolia } from "wagmi/chains";
 
@@ -79,16 +80,43 @@ export function DepositModal({ open, onClose, onSuccess, vaultBalance }: Deposit
               </div>
 
               {/* Current balance */}
-              <div className="rounded-lg bg-surface-2 border border-border px-4 py-3 mb-5">
+              <div className="rounded-lg bg-surface-2 border border-border px-4 py-3 mb-4">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-0.5">
                   Current Vault Balance
                 </p>
                 <p className="text-lg font-mono text-gold">
                   {vaultBalance || "0"} ETH
                 </p>
-                <p className="text-[10px] font-mono text-text-3 mt-0.5">
-                  {VAULT_ADDRESS.slice(0, 10)}...{VAULT_ADDRESS.slice(-6)}
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[10px] font-mono text-text-3">
+                    {VAULT_ADDRESS.slice(0, 10)}...{VAULT_ADDRESS.slice(-6)}
+                  </p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(VAULT_ADDRESS)}
+                    className="text-text-3 hover:text-gold transition-colors cursor-pointer"
+                    title="Copy address"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Code for mobile deposit */}
+              <div className="rounded-lg border border-border p-4 mb-5 text-center">
+                <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-3">Scan to deposit from phone</p>
+                <div className="bg-white rounded-lg p-3 inline-block">
+                  <QRCodeSVG
+                    value={`ethereum:${VAULT_ADDRESS}@84532`}
+                    size={140}
+                    bgColor="#ffffff"
+                    fgColor="#09090B"
+                    level="M"
+                  />
+                </div>
+                <p className="text-[10px] text-text-3/70 font-mono mt-2">Base Sepolia ETH only</p>
               </div>
 
               {isSuccess ? (
@@ -112,7 +140,7 @@ export function DepositModal({ open, onClose, onSuccess, vaultBalance }: Deposit
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0.001"
                       disabled={isPending || isConfirming}
-                      className="w-full bg-bg border border-border rounded-lg px-4 py-3 text-[14px] font-mono text-text placeholder:text-text-3/50 focus:outline-none focus:border-gold/30 transition-colors disabled:opacity-40"
+                      className="w-full bg-bg border border-border rounded-lg px-4 py-3 text-[14px] font-mono text-text placeholder:text-text-3/70 focus:outline-none focus:border-gold/30 transition-colors disabled:opacity-40"
                     />
                   </div>
 
@@ -149,7 +177,7 @@ export function DepositModal({ open, onClose, onSuccess, vaultBalance }: Deposit
 
                   <p className="text-[10px] text-text-3 font-mono text-center mt-3">
                     Funds go to ShadeVault on Base Sepolia. The agent spends from the vault
-                    using ephemeral wallets — your identity stays hidden.
+                    using ephemeral wallets, your identity stays hidden.
                   </p>
                 </>
               )}

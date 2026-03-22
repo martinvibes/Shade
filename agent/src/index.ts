@@ -312,6 +312,23 @@ app.post("/dca/cancel/:id", async (req, res) => {
   }
 });
 
+// ── Locus Status ──
+app.get("/locus/status", async (_req, res) => {
+  try {
+    const { getBalance } = await import("./payments/locus.js");
+    const balance = await getBalance(config.locusApiKey);
+    res.json({
+      connected: true,
+      balance: balance.usdc_balance || "0",
+      wallet: balance.wallet_address || "",
+      chain: "Base",
+      currency: "USDC",
+    });
+  } catch (error: any) {
+    res.json({ connected: false, balance: "0", wallet: "", chain: "Base", currency: "USDC", error: error.message });
+  }
+});
+
 // ── ENS Resolution ──
 app.get("/ens/resolve/:name", async (req, res) => {
   try {

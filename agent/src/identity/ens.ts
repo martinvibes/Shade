@@ -1,36 +1,42 @@
 import { ethers } from "ethers";
 
 // ENS lives on Ethereum mainnet — we need a mainnet provider for resolution
-const MAINNET_RPC = "https://eth.llamarpc.com";
-
-function getMainnetProvider(): ethers.JsonRpcProvider {
-  return new ethers.JsonRpcProvider(MAINNET_RPC);
-}
+const MAINNET_RPCS = [
+  "https://eth.llamarpc.com",
+  "https://rpc.ankr.com/eth",
+  "https://ethereum-rpc.publicnode.com",
+];
 
 /**
  * Resolve an ENS name to an Ethereum address.
- * Uses mainnet provider since ENS registry is on L1.
+ * Tries multiple RPCs for reliability.
  */
 export async function resolveENS(ensName: string): Promise<string | null> {
-  try {
-    const provider = getMainnetProvider();
-    const address = await provider.resolveName(ensName);
-    return address;
-  } catch {
-    return null;
+  for (const rpc of MAINNET_RPCS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpc);
+      const address = await provider.resolveName(ensName);
+      if (address) return address;
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 /**
  * Reverse lookup — get ENS name for an address.
  */
 export async function lookupENS(address: string): Promise<string | null> {
-  try {
-    const provider = getMainnetProvider();
-    return await provider.lookupAddress(address);
-  } catch {
-    return null;
+  for (const rpc of MAINNET_RPCS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(rpc);
+      return await provider.lookupAddress(address);
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 /**

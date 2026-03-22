@@ -4,17 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShadeLogo } from "./ShadeLogo";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import { useRef, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 
-/*
- * Card-stack slide: each section is sticky so it stays in place.
- * The NEXT section slides up over the current one — like swiping pages on a phone.
- * We wrap each slide in a tall container (200vh) so there's scroll room
- * for the sticky element to "hold" while the next card arrives.
- */
 function Slide({
   children,
   imageSrc,
@@ -23,46 +17,56 @@ function Slide({
   isLast = false,
 }: {
   children: ReactNode;
-  imageSrc: string;
+  imageSrc?: string;
   overlay?: string;
   index?: number;
   isLast?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { amount: 0.4 });
+  const isInView = useInView(ref, { amount: 0.35 });
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+  const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+  const contentScale = useTransform(
+    scrollYProgress,
+    [0, 0.3, 0.7, 1],
+    [0.95, 1, 1, 0.98],
+  );
 
   return (
-    <div
-      className="relative"
-      style={{ height: isLast ? "100vh" : "200vh" }}
-    >
+    <div className="relative" style={{ height: isLast ? "100vh" : "200vh" }}>
       <section
         ref={ref}
-        className="sticky top-0 h-screen flex items-center justify-center overflow-hidden"
+        className="sticky top-0 h-screen flex items-center justify-center overflow-hidden bg-bg"
         style={{ zIndex: index + 1 }}
       >
-        {/* Background image */}
-        <div className="absolute inset-0">
-          <Image
-            src={imageSrc}
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover"
-            quality={85}
-            priority={index < 2}
-          />
-        </div>
+        {imageSrc && (
+          <>
+            <motion.div className="absolute -inset-[20%]" style={{ y: imageY }}>
+              <Image
+                src={imageSrc}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover"
+                quality={85}
+                priority={index < 2}
+              />
+            </motion.div>
+            <div className={`absolute inset-0 ${overlay}`} />
+            {/* Top/bottom vignette for smooth blending */}
+            <div className="absolute inset-0 bg-gradient-to-b from-bg/40 via-transparent to-bg/60 pointer-events-none" />
+          </>
+        )}
 
-        {/* Overlay */}
-        <div className={`absolute inset-0 ${overlay}`} />
-
-        {/* Content — fades + slides up when in view */}
         <motion.div
           className="relative z-10 w-full"
-          initial={{ opacity: 0, y: 60 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 60 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ scale: contentScale }}
+          initial={{ opacity: 0, y: 50 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         >
           {children}
         </motion.div>
@@ -71,7 +75,6 @@ function Slide({
   );
 }
 
-/* ── Staggered child animation ── */
 function FadeUp({
   children,
   delay = 0,
@@ -88,9 +91,9 @@ function FadeUp({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0, 1] }}
+      initial={{ opacity: 0, y: 24 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -123,13 +126,13 @@ export function Landing() {
         <nav className="flex items-center gap-6 pointer-events-auto">
           <Link
             href="/demo"
-            className="font-mono text-[12px] text-white/60 hover:text-white transition-colors"
+            className="font-mono text-[12px] text-white/60 hover:text-white transition-colors duration-300"
           >
             Demo
           </Link>
           <button
             onClick={handleConnect}
-            className="font-mono text-[12px] text-white/60 hover:text-white transition-colors"
+            className="font-mono text-[12px] text-white/60 hover:text-white transition-colors duration-300"
           >
             {isConnected ? "Launch App" : "Connect"}
           </button>
@@ -141,7 +144,7 @@ export function Landing() {
         {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-white/30 transition-all duration-300"
+            className="w-1.5 h-1.5 rounded-full bg-white/20 transition-all duration-500"
           />
         ))}
       </div>
@@ -167,8 +170,8 @@ export function Landing() {
           </FadeUp>
           <FadeUp delay={0.2}>
             <p className="text-white/50 text-lg max-w-lg mt-8 leading-relaxed">
-              An autonomous AI agent that pays, transacts, and operates
-              on your behalf without ever revealing your identity.
+              An autonomous AI agent that pays, transacts, and operates on your
+              behalf without ever revealing your identity.
             </p>
           </FadeUp>
           <FadeUp delay={0.3}>
@@ -224,7 +227,9 @@ export function Landing() {
               <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-white leading-tight mb-8">
                 Every agent today
                 <br />
-                <span className="italic text-exposed/80">leaks everything.</span>
+                <span className="italic text-exposed/80">
+                  leaks everything.
+                </span>
               </h2>
             </FadeUp>
             <FadeUp delay={0.2}>
@@ -245,21 +250,28 @@ export function Landing() {
               </div>
               <div className="space-y-3">
                 {[
-                  { label: "Name", value: "John Smith" },
-                  { label: "Wallet", value: "0x742d...8e4f" },
-                  { label: "Email", value: "john@example.com" },
-                  { label: "Intent", value: "Buy API for farm" },
-                  { label: "IP", value: "192.168.1.105" },
-                  { label: "Budget", value: "$7.50 exact" },
+                  { label: "Name", value: "John Smith", d: 1.2 },
+                  { label: "Wallet", value: "0x742d...8e4f", d: 2.5 },
+                  { label: "Email", value: "john@example.com", d: 1.8 },
+                  { label: "Intent", value: "Buy API for farm", d: 3.1 },
+                  { label: "IP", value: "192.168.1.105", d: 2.0 },
+                  { label: "Budget", value: "$7.50 exact", d: 1.5 },
                 ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-text-3">{item.label}</span>
-                    <span className="font-mono text-[11px] text-exposed/70">{item.value}</span>
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="font-mono text-[11px] text-text-3">
+                      {item.label}
+                    </span>
+                    <span className="font-mono text-[11px] text-exposed/70">
+                      {item.value}
+                    </span>
                   </div>
                 ))}
               </div>
               <div className="mt-4 pt-3 border-t border-border">
-                <span className="font-mono text-[10px] text-exposed/50">
+                <span className="font-mono text-[10px] text-exposed/60">
                   7/7 fields exposed to third parties
                 </span>
               </div>
@@ -292,15 +304,32 @@ export function Landing() {
                   { label: "IP", value: "Stripped", safe: true },
                   { label: "Budget", value: "$5\u201310 range", safe: false },
                 ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-text-3">{item.label}</span>
-                    <span
-                      className={`font-mono text-[11px] ${
-                        item.safe ? "text-safe" : "text-gold"
-                      }`}
-                    >
-                      {item.value}
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="font-mono text-[11px] text-text-3">
+                      {item.label}
                     </span>
+                    <div className="flex items-center gap-1.5">
+                      {item.safe && (
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="var(--color-safe)"
+                          strokeWidth="2.5"
+                        >
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      )}
+                      <span
+                        className={`font-mono text-[11px] ${item.safe ? "text-safe" : "text-gold"}`}
+                      >
+                        {item.value}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -328,8 +357,8 @@ export function Landing() {
             <FadeUp delay={0.25}>
               <p className="text-white/50 text-[16px] leading-relaxed max-w-md">
                 Fund the agent once. From that moment, it operates through
-                ephemeral wallets, proves authorization with zero-knowledge proofs,
-                and reasons through a private inference engine that retains nothing.
+                ephemeral wallets, reasons through a private inference engine
+                that retains nothing, and proves its work on-chain.
               </p>
             </FadeUp>
           </div>
@@ -339,7 +368,7 @@ export function Landing() {
       {/* ─────── SLIDE 4: How It Works ─────── */}
       <Slide
         index={3}
-        imageSrc="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1800&q=80&auto=format"
+        imageSrc="https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1800&q=80&auto=format"
         overlay="bg-bg/80"
       >
         <div className="max-w-6xl mx-auto px-8 md:px-16">
@@ -357,33 +386,91 @@ export function Landing() {
               {
                 num: "01",
                 title: "Private Reasoning",
-                desc: "Venice AI processes your task with zero data retention. Nothing stored. Nothing logged.",
+                desc: "Venice AI processes your task with zero data retention. Your prompts are never stored or logged.",
+                icon: (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--color-gold)"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 6l-1 4H9l-1-4c-1.5-1.5-3-3.5-3-6a7 7 0 0 1 7-7z" />
+                    <line x1="9" y1="21" x2="15" y2="21" />
+                  </svg>
+                ),
               },
               {
                 num: "02",
                 title: "Selective Disclosure",
-                desc: "The agent reasons about minimum data to reveal. Budget range, not exact. Category, not full intent.",
+                desc: "The agent decides the minimum data to reveal per task. Budget range, not exact. Category, not full intent.",
+                icon: (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--color-gold)"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                ),
               },
               {
                 num: "03",
-                title: "ZK Authorization",
-                desc: 'Self Protocol proves "I am authorized" without revealing who. Zero-knowledge identity verification.',
+                title: "ENS Identity",
+                desc: "Send to vitalik.eth instead of raw addresses. The agent resolves names privately, your identity stays hidden.",
+                icon: (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--color-gold)"
+                    strokeWidth="1.5"
+                  >
+                    <circle cx="12" cy="8" r="5" />
+                    <path d="M20 21a8 8 0 1 0-16 0" />
+                  </svg>
+                ),
               },
               {
                 num: "04",
-                title: "Ephemeral Execution",
-                desc: "One-time wallets via Locus handle payments. Every transaction is untraceable back to you.",
+                title: "Private Execution",
+                desc: "ShadeVault for ETH, Locus for USDC. Recurring payments, DCA orders, all untraceable back to you.",
+                icon: (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--color-gold)"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                ),
               },
             ].map((step, i) => (
               <FadeUp key={step.num} delay={i * 0.1}>
-                <div className="bg-surface/60 backdrop-blur-xl border border-gold/20 rounded-xl p-6 h-full">
-                  <span className="font-mono text-gold/40 text-[28px] font-medium">
-                    {step.num}
-                  </span>
-                  <h3 className="text-[15px] text-white font-medium mt-3 mb-2">
+                <div className="bg-surface/60 backdrop-blur-xl border border-white/[0.06] rounded-xl p-6 h-full hover:border-gold/20 transition-colors duration-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-mono text-gold/30 text-[28px] font-medium">
+                      {step.num}
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-gold/5 flex items-center justify-center">
+                      {step.icon}
+                    </div>
+                  </div>
+                  <h3 className="text-[15px] text-white font-medium mb-2">
                     {step.title}
                   </h3>
-                  <p className="text-[13px] text-white/40 leading-relaxed">{step.desc}</p>
+                  <p className="text-[13px] text-white/50 leading-relaxed">
+                    {step.desc}
+                  </p>
                 </div>
               </FadeUp>
             ))}
@@ -395,29 +482,34 @@ export function Landing() {
       <Slide
         index={4}
         isLast
-        imageSrc="https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1800&q=80&auto=format"
-        overlay="bg-bg/60"
+        imageSrc="https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=1800&q=80&auto=format"
+        overlay="bg-bg/75"
       >
         <div className="max-w-3xl mx-auto px-8 text-center">
           <FadeUp>
+            <div className="flex justify-center mb-8">
+              <ShadeLogo size={48} />
+            </div>
+          </FadeUp>
+          <FadeUp delay={0.1}>
             <p className="font-mono text-[11px] tracking-[0.3em] uppercase text-gold mb-6">
               Get Started
             </p>
           </FadeUp>
-          <FadeUp delay={0.1}>
+          <FadeUp delay={0.15}>
             <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl text-white mb-6">
               Ready to go
               <br />
               <span className="italic text-gold">invisible?</span>
             </h2>
           </FadeUp>
-          <FadeUp delay={0.2}>
-            <p className="text-white/40 text-[16px] max-w-md mx-auto mb-10 leading-relaxed">
-              Connect your wallet. Fund the agent. From that moment on,
-              Shade handles everything and nothing traces back to you.
+          <FadeUp delay={0.25}>
+            <p className="text-white/50 text-[16px] max-w-md mx-auto mb-10 leading-relaxed">
+              Connect your wallet. Fund the agent. From that moment on, Shade
+              handles everything and nothing traces back to you.
             </p>
           </FadeUp>
-          <FadeUp delay={0.3}>
+          <FadeUp delay={0.35}>
             <div className="flex items-center justify-center gap-4">
               <button
                 onClick={handleConnect}
@@ -434,18 +526,23 @@ export function Landing() {
             </div>
           </FadeUp>
 
-          <FadeUp delay={0.4}>
-            <div className="flex items-center justify-center gap-6 mt-16">
-              {["Venice AI", "Self Protocol", "ERC-8004", "Locus", "ENS"].map(
-                (name) => (
-                  <span
-                    key={name}
-                    className="font-mono text-[10px] tracking-wider text-white/20 uppercase"
-                  >
-                    {name}
-                  </span>
-                )
-              )}
+          <FadeUp delay={0.45}>
+            <div className="flex items-center justify-center gap-8 mt-16">
+              {[
+                "Venice AI",
+                "ERC-8004",
+                "Locus",
+                "ENS",
+                "DCA",
+                "Recurring",
+              ].map((name) => (
+                <span
+                  key={name}
+                  className="font-mono text-[10px] tracking-wider text-white/25 uppercase hover:text-white/50 transition-colors duration-300"
+                >
+                  {name}
+                </span>
+              ))}
             </div>
           </FadeUp>
         </div>

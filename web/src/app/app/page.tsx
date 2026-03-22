@@ -13,6 +13,7 @@ import { DepositModal } from "@/components/DepositModal";
 import { TaskHistory } from "@/components/TaskHistory";
 import { ResultTabs } from "@/components/ResultTabs";
 import { QRPayment } from "@/components/QRPayment";
+import { QRCodeSVG } from "qrcode.react";
 import dynamic from "next/dynamic";
 const ExportPDF = dynamic(
   () =>
@@ -162,6 +163,9 @@ export default function AppPage() {
   const [vaultBalance, setVaultBalance] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showLocusInfo, setShowLocusInfo] = useState(false);
+  const [locusBalance, setLocusBalance] = useState<string | null>(null);
+  const [locusWallet, setLocusWallet] = useState<string>("");
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -172,6 +176,13 @@ export default function AppPage() {
     fetch(`${API_BASE}/vault/balance`)
       .then((r) => r.json())
       .then((d) => setVaultBalance(d.balance))
+      .catch(() => {});
+    fetch(`${API_BASE}/locus/status`)
+      .then((r) => r.json())
+      .then((d) => {
+        setLocusBalance(d.balance || "0");
+        setLocusWallet(d.wallet || "");
+      })
       .catch(() => {});
   }, [state, refreshKey]);
 
@@ -276,9 +287,21 @@ export default function AppPage() {
                       <path d="M2 10h20" />
                     </svg>
                     <span className="text-gold">{vaultBalance || "0"} ETH</span>
-                    <span className="text-[9px] text-text-3/40 group-hover:text-gold/60 transition-colors">
+                    <span className="text-[9px] text-text-3/70 group-hover:text-gold/60 transition-colors">
                       Deposit
                     </span>
+                  </button>
+                  <span className="text-white/[0.08]">|</span>
+                  <button
+                    onClick={() => setShowLocusInfo(true)}
+                    className="flex items-center gap-1.5 text-[11px] font-mono text-text-3 hover:text-gold transition-colors group px-2.5 py-1 rounded-lg hover:bg-gold/5 -mx-1"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-safe/60 group-hover:text-safe">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
+                    </svg>
+                    <span className="text-safe">${locusBalance || "0"}</span>
+                    <span className="text-[9px] text-text-3/70 group-hover:text-safe/60 transition-colors">USDC</span>
                   </button>
                   <span className="text-white/[0.08]">|</span>
                   <span className="text-[11px] font-mono text-text-3">
@@ -402,7 +425,7 @@ export default function AppPage() {
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder="e.g. Send 0.001 ETH to 0x... privately"
-                            className="w-full bg-transparent rounded-2xl px-6 py-5 pr-28 text-[15px] font-mono text-text placeholder:text-text-3/40 focus:outline-none input-glow"
+                            className="w-full bg-transparent rounded-2xl px-6 py-5 pr-28 text-[15px] font-mono text-text placeholder:text-text-3/70 focus:outline-none input-glow"
                             autoFocus
                           />
                           <button
@@ -506,9 +529,9 @@ export default function AppPage() {
                       </p>
                       <p className="text-xl font-mono text-gold">
                         {vaultBalance ? `${vaultBalance}` : "\u2014"}{" "}
-                        <span className="text-[12px] text-text-3/40">ETH</span>
+                        <span className="text-[12px] text-text-3/70">ETH</span>
                       </p>
-                      <p className="text-[10px] font-mono text-text-3/40 group-hover:text-gold/60 mt-0.5 transition-colors">
+                      <p className="text-[10px] font-mono text-text-3/70 group-hover:text-gold/60 mt-0.5 transition-colors">
                         Click to deposit &rarr;
                       </p>
                     </button>
@@ -694,7 +717,7 @@ export default function AppPage() {
                                 <span className="text-[12px] text-text block">
                                   {example.label}
                                 </span>
-                                <span className="text-[10px] font-mono text-text-3/50 group-hover:text-gold/60 transition-colors">
+                                <span className="text-[10px] font-mono text-text-3/70 group-hover:text-gold/60 transition-colors">
                                   {example.task.length > 45
                                     ? example.task.slice(0, 45) + "..."
                                     : example.task}
@@ -1021,7 +1044,7 @@ export default function AppPage() {
                             <span className="text-[12px] text-text block">
                               Export Report
                             </span>
-                            <span className="text-[10px] text-text-3/50 font-mono">
+                            <span className="text-[10px] text-text-3/70 font-mono">
                               Download PDF audit log
                             </span>
                           </div>
@@ -1064,7 +1087,7 @@ export default function AppPage() {
                             <span className="text-[12px] text-text block">
                               Payment QR
                             </span>
-                            <span className="text-[10px] text-text-3/50 font-mono">
+                            <span className="text-[10px] text-text-3/70 font-mono">
                               Scannable payment link
                             </span>
                           </div>
@@ -1127,7 +1150,7 @@ export default function AppPage() {
                       Connection Failed
                     </h3>
                     <p className="text-[13px] text-text-3 mb-2">{errorMsg}</p>
-                    <p className="text-[11px] text-text-3/50 font-mono mb-6">
+                    <p className="text-[11px] text-text-3/70 font-mono mb-6">
                       Is the agent running? cd agent && pnpm dev
                     </p>
                     <button
@@ -1151,6 +1174,103 @@ export default function AppPage() {
         vaultBalance={vaultBalance}
       />
       <QRPayment open={showQR} onClose={() => setShowQR(false)} />
+
+      {/* Locus Info Modal */}
+      <AnimatePresence>
+        {showLocusInfo && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLocusInfo(false)}
+              className="fixed inset-0 bg-bg/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm"
+            >
+              <div className="rounded-2xl border border-border bg-surface p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-safe)" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v12M15 9.5c-.5-1-1.5-1.5-3-1.5s-3 .7-3 2 1.2 2 3 2.5 3 1 3 2.5-1.5 2-3 2-2.5-.5-3-1.5" />
+                    </svg>
+                    <h3 className="text-[15px] text-text font-medium">Locus USDC Wallet</h3>
+                  </div>
+                  <button onClick={() => setShowLocusInfo(false)} className="text-text-3 hover:text-text text-lg cursor-pointer">&times;</button>
+                </div>
+
+                {/* Balance */}
+                <div className="glass rounded-xl p-4 mb-4 text-center">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">Available Balance</p>
+                  <p className="text-2xl font-mono text-safe font-medium">${locusBalance || "0"} <span className="text-[14px] text-text-3/70">USDC</span></p>
+                  <p className="text-[10px] font-mono text-text-3/70 mt-1">On Base mainnet</p>
+                </div>
+
+                {/* Deposit address */}
+                <div className="mb-4">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-2">Deposit Address (Base USDC)</p>
+                  <div className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-mono text-text truncate">{locusWallet}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(locusWallet);
+                      }}
+                      className="shrink-0 text-text-3 hover:text-gold transition-colors cursor-pointer"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-text-3/70 mt-2">
+                    Send USDC on <span className="text-text-3">Base</span> to this address to fund private payments.
+                  </p>
+                </div>
+
+                {/* QR Code */}
+                {locusWallet && (
+                  <div className="glass rounded-xl p-4 mb-4 text-center">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-3">Scan to deposit from phone</p>
+                    <div className="bg-white rounded-lg p-3 inline-block">
+                      <QRCodeSVG
+                        value={`ethereum:${locusWallet}@8453`}
+                        size={140}
+                        bgColor="#ffffff"
+                        fgColor="#09090B"
+                        level="M"
+                      />
+                    </div>
+                    <p className="text-[10px] text-text-3/70 font-mono mt-2">Base USDC only</p>
+                  </div>
+                )}
+
+                {/* How it works */}
+                <div className="glass rounded-xl p-4">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-2">How it works</p>
+                  <div className="space-y-2">
+                    {[
+                      "Send USDC to the address above on Base",
+                      "Type \"Send $X USDC to [address] via Locus\"",
+                      "Agent pays from Locus wallet — untraceable to you",
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-[10px] font-mono text-gold shrink-0">{i + 1}.</span>
+                        <span className="text-[11px] text-text-3">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

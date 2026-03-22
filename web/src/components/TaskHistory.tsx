@@ -34,13 +34,26 @@ function TaskRow({ t, i }: { t: TaskRecord; i: number }) {
       transition={{ delay: i * 0.03 }}
       className="px-4 py-3 flex items-center gap-4 hover:bg-white/[0.02] transition-colors"
     >
-      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.success ? "bg-safe" : "bg-exposed"}`} />
+      <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${t.success ? "bg-safe/10" : "bg-exposed/10"}`}>
+        {t.success ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-safe)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-exposed)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        )}
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-mono text-text truncate">{t.intentCategory}</p>
-        <p className="text-[10px] font-mono text-text-3/50">{timeAgo}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[12px] font-mono text-text truncate">{t.intentCategory}</p>
+          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${t.success ? "bg-safe/10 text-safe" : "bg-exposed/10 text-exposed"}`}>
+            {t.success ? "Success" : "Failed"}
+          </span>
+        </div>
+        <p className="text-[10px] font-mono text-text-3/70">{timeAgo}</p>
       </div>
       <span className="text-[11px] font-mono text-text-3 shrink-0">
-        {parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014"}
+        {t.intentCategory === "payment"
+          ? `$${(parseFloat(t.cost) * 1e12).toFixed(2)} USDC`
+          : parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014"}
       </span>
       <div className="flex items-center gap-1.5 shrink-0">
         <div className="w-8 h-1 rounded-full bg-white/[0.05] overflow-hidden">
@@ -138,7 +151,10 @@ export function TaskHistory({ refreshKey }: TaskHistoryProps) {
       doc.setTextColor("#FAFAFA");
       doc.text(t.intentCategory, 20, y);
       doc.setTextColor("#A1A1AA");
-      doc.text(parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014", 70, y);
+      const costStr = t.intentCategory === "payment"
+        ? `$${(parseFloat(t.cost) * 1e12).toFixed(2)} USDC`
+        : parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014";
+      doc.text(costStr, 70, y);
       doc.setTextColor("#D4A853");
       doc.text(`${privacy}%`, 95, y);
       doc.setTextColor(t.success ? "#22C55E" : "#EF4444");
@@ -173,7 +189,7 @@ export function TaskHistory({ refreshKey }: TaskHistoryProps) {
     return (
       <div className="glass rounded-xl p-6 text-center">
         <p className="text-[12px] text-text-3 font-mono">No tasks yet</p>
-        <p className="text-[10px] text-text-3/50 font-mono mt-1">Execute a task to see history here</p>
+        <p className="text-[10px] text-text-3/70 font-mono mt-1">Execute a task to see history here</p>
       </div>
     );
   }
@@ -191,14 +207,14 @@ export function TaskHistory({ refreshKey }: TaskHistoryProps) {
               className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-gold/10 transition-colors cursor-pointer group"
               title="Export history as PDF"
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-3/50 group-hover:text-gold transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-3/70 group-hover:text-gold transition-colors">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span className="text-[10px] font-mono text-text-3/50 group-hover:text-gold transition-colors">PDF</span>
+              <span className="text-[10px] font-mono text-text-3/70 group-hover:text-gold transition-colors">PDF</span>
             </button>
-            <span className="text-[10px] font-mono text-text-3/50">
+            <span className="text-[10px] font-mono text-text-3/70">
               {total} on-chain
             </span>
           </div>

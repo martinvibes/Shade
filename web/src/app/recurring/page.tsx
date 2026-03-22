@@ -180,7 +180,7 @@ export default function RecurringPage() {
                     <div key={s.label} className="rounded-xl border border-white/[0.06] px-4 py-3" style={{ background: "rgba(13,13,16,0.8)" }}>
                       <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">{s.label}</p>
                       <p className="text-lg font-mono text-gold">{s.value}</p>
-                      <p className="text-[10px] font-mono text-text-3/40">{s.sub}</p>
+                      <p className="text-[10px] font-mono text-text-3/70">{s.sub}</p>
                     </div>
                   ))}
                 </motion.div>
@@ -335,17 +335,17 @@ export default function RecurringPage() {
                                 <span className="text-text-3">{payment.intervalLabel.toLowerCase()}</span>
                               </p>
                               <div className="flex items-center gap-3 mt-1">
-                                <span className="text-[10px] font-mono text-text-3/50">
+                                <span className="text-[10px] font-mono text-text-3/70">
                                   {payment.executionCount} executed
                                 </span>
-                                <span className="text-[10px] font-mono text-text-3/30">&middot;</span>
+                                <span className="text-[10px] font-mono text-text-3/60">&middot;</span>
                                 <span className="text-[10px] font-mono text-gold/60">
                                   Next: {nextLabel}
                                 </span>
                                 {payment.lastExecutedAt && (
                                   <>
-                                    <span className="text-[10px] font-mono text-text-3/30">&middot;</span>
-                                    <span className="text-[10px] font-mono text-text-3/40">
+                                    <span className="text-[10px] font-mono text-text-3/60">&middot;</span>
+                                    <span className="text-[10px] font-mono text-text-3/70">
                                       Last: {getTimeAgo(Math.floor(payment.lastExecutedAt / 1000))}
                                     </span>
                                   </>
@@ -356,7 +356,7 @@ export default function RecurringPage() {
                                   href={`https://sepolia.basescan.org/tx/${payment.txHashes[payment.txHashes.length - 1]}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-[10px] font-mono text-text-3/30 hover:text-gold transition-colors mt-1 inline-block"
+                                  className="text-[10px] font-mono text-text-3/60 hover:text-gold transition-colors mt-1 inline-block"
                                 >
                                   Latest tx &rarr;
                                 </a>
@@ -365,7 +365,7 @@ export default function RecurringPage() {
 
                             <button
                               onClick={() => handleCancel(payment.id)}
-                              className="text-text-3/40 hover:text-exposed transition-colors shrink-0 p-1 cursor-pointer"
+                              className="text-text-3/70 hover:text-exposed transition-colors shrink-0 p-1 cursor-pointer"
                               title="Cancel"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -401,9 +401,9 @@ export default function RecurringPage() {
                           <p className="text-[12px] text-text-2 mb-0.5">
                             <span className="font-mono">{payment.amount} ETH</span>{" "}
                             to <span className="font-mono text-text-3">{payment.recipientDisplay}</span>{" "}
-                            <span className="text-text-3/50">{payment.intervalLabel.toLowerCase()}</span>
+                            <span className="text-text-3/70">{payment.intervalLabel.toLowerCase()}</span>
                           </p>
-                          <p className="text-[10px] font-mono text-text-3/40">
+                          <p className="text-[10px] font-mono text-text-3/70">
                             {payment.status === "cancelled" ? "Cancelled" : "Stopped"} &middot; {payment.executionCount} payments made &middot; {(payment.amount * payment.executionCount).toFixed(4)} ETH total
                           </p>
                         </div>

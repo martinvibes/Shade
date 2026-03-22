@@ -181,9 +181,9 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                 <div>
                   <span className="text-[13px] font-mono text-text font-medium">ETH / USD</span>
                   <div className="flex items-center gap-2 mt-px">
-                    <span className="text-[10px] font-mono text-text-3/40">Ethereum</span>
+                    <span className="text-[10px] font-mono text-text-3/70">Ethereum</span>
                     <span className="w-px h-2.5 bg-white/[0.06]" />
-                    <span className="text-[10px] font-mono text-text-3/40">24h</span>
+                    <span className="text-[10px] font-mono text-text-3/70">24h</span>
                   </div>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                 <button
                   onClick={() => setChartMode("line")}
                   className={`px-3 py-1.5 rounded-md text-[10px] font-mono transition-all ${
-                    chartMode === "line" ? "bg-white/[0.08] text-text shadow-sm" : "text-text-3/40 hover:text-text-3"
+                    chartMode === "line" ? "bg-white/[0.08] text-text shadow-sm" : "text-text-3/70 hover:text-text-3"
                   }`}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="inline -mt-px mr-1">
@@ -248,7 +248,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                 <button
                   onClick={() => setChartMode("candle")}
                   className={`px-3 py-1.5 rounded-md text-[10px] font-mono transition-all ${
-                    chartMode === "candle" ? "bg-white/[0.08] text-text shadow-sm" : "text-text-3/40 hover:text-text-3"
+                    chartMode === "candle" ? "bg-white/[0.08] text-text shadow-sm" : "text-text-3/70 hover:text-text-3"
                   }`}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="inline -mt-px mr-1">
@@ -402,15 +402,15 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
             <div className="h-full flex items-center justify-center">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-text-3 animate-pulse-dot" />
-                <span className="text-[11px] font-mono text-text-3/40">Loading chart...</span>
+                <span className="text-[11px] font-mono text-text-3/70">Loading chart...</span>
               </div>
             </div>
           )}
 
           {/* Time labels */}
           <div className="absolute bottom-2 left-4 right-4 flex justify-between pointer-events-none">
-            <span className="text-[9px] font-mono text-text-3/30">24h ago</span>
-            <span className="text-[9px] font-mono text-text-3/30">Now</span>
+            <span className="text-[9px] font-mono text-text-3/60">24h ago</span>
+            <span className="text-[9px] font-mono text-text-3/60">Now</span>
           </div>
 
           {/* Price scale */}
@@ -614,11 +614,11 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                     <p className="text-[13px] text-text mb-0.5">
                       When ETH {order.type === "price_below" ? "drops below" : "rises above"}{" "}
                       <span className="font-mono font-medium">${order.targetPrice.toLocaleString()}</span>
-                      <span className={`text-[11px] font-mono ml-1.5 ${distPercent < 0 ? "text-safe" : "text-text-3/50"}`}>
+                      <span className={`text-[11px] font-mono ml-1.5 ${distPercent < 0 ? "text-safe" : "text-text-3/70"}`}>
                         ({distPercent > 0 ? "+" : ""}{distPercent.toFixed(1)}% away)
                       </span>
                     </p>
-                    <p className="text-[11px] font-mono text-text-3/50">
+                    <p className="text-[11px] font-mono text-text-3/70">
                       Send <span className="text-gold">{order.amount} ETH</span> to {order.recipient.slice(0, 8)}...{order.recipient.slice(-4)} via ShadeVault
                     </p>
                     <div className="mt-1.5 flex items-center gap-2">
@@ -629,7 +629,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                           animate={{ width: `${Math.min(100, Math.max(5, 100 - Math.abs(distPercent) * 10))}%` }}
                         />
                       </div>
-                      <span className="text-[9px] font-mono text-text-3/40 shrink-0">
+                      <span className="text-[9px] font-mono text-text-3/70 shrink-0">
                         ${Math.abs(currentPrice - order.targetPrice).toFixed(0)} away
                       </span>
                     </div>
@@ -637,7 +637,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
 
                   <button
                     onClick={() => handleCancel(order.id)}
-                    className="text-text-3/40 hover:text-exposed transition-colors shrink-0 p-1"
+                    className="text-text-3/70 hover:text-exposed transition-colors shrink-0 p-1"
                     title="Cancel"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -680,7 +680,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                     {" to "}
                     <span className="font-mono text-text-3">{order.recipient.slice(0, 6)}...{order.recipient.slice(-4)}</span>
                   </p>
-                  <p className="text-[10px] font-mono text-text-3/40">
+                  <p className="text-[10px] font-mono text-text-3/70">
                     {order.status === "triggered" ? "Executed privately via ShadeVault" : order.status === "cancelled" ? "Cancelled by user" : "Failed to execute"}
                     {order.triggeredAt ? ` \u2022 ${getTimeAgo(Math.floor(order.triggeredAt / 1000))}` : ""}
                   </p>
@@ -690,7 +690,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                     href={`https://sepolia.basescan.org/tx/${order.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-3/40 hover:text-gold transition-colors shrink-0"
+                    className="text-text-3/70 hover:text-gold transition-colors shrink-0"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

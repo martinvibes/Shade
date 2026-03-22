@@ -76,7 +76,7 @@ async function executePrivatePayment(task: ClassifiedTask): Promise<ExecutionRes
   try {
     // Check balance first
     const balance = await getBalance(config.locusApiKey);
-    const balanceNum = parseFloat(balance.balance || "0");
+    const balanceNum = parseFloat(balance.usdc_balance || balance.balance || "0");
 
     if (balanceNum < task.amount) {
       return { success: false, txHash: null, method: "locus", amount: task.amount, currency: "USDC", recipient: task.recipientAddress, error: `Insufficient Locus balance: $${balanceNum} < $${task.amount}` };
