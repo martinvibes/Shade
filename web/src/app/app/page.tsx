@@ -419,15 +419,17 @@ export default function AppPage() {
                       transition={{ delay: 0.1 }}
                       className="text-center mb-10"
                     >
-                      <div className="w-12 h-12 rounded-2xl glass flex items-center justify-center mx-auto mb-6">
-                        <div className="w-3 h-3 rounded-full bg-gold animate-pulse-dot" />
+                      <div className="relative inline-block mb-6">
+                        <div className="absolute inset-0 bg-gold/20 blur-xl rounded-full" />
+                        <div className="relative w-14 h-14 rounded-2xl bg-surface/80 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl">
+                          <div className="w-3.5 h-3.5 rounded-full bg-gold animate-pulse-dot" />
+                        </div>
                       </div>
-                      <h1 className="font-serif text-3xl md:text-4xl text-text mb-3">
+                      <h1 className="font-serif text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/40 mb-5 tracking-tight">
                         What should Shade do?
                       </h1>
-                      <p className="text-text-3 text-[14px] max-w-sm mx-auto">
-                        Describe an on-chain task. Shade will execute it without
-                        revealing your identity.
+                      <p className="text-white/40 text-[15px] max-w-md mx-auto leading-relaxed">
+                        Describe an on-chain task. Shade uses <span className="text-gold/70 italic font-serif">Venice AI</span> to execute it without ever revealing your identity.
                       </p>
                     </motion.div>
 
@@ -440,58 +442,64 @@ export default function AppPage() {
                         e.preventDefault();
                         if (inputValue.trim()) handleSubmit(inputValue.trim());
                       }}
-                      className="w-full"
+                      className="w-full relative z-20 group"
                     >
-                      <div className="relative group">
-                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-gold/20 via-transparent to-gold/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
-                        <div className="relative glass-strong rounded-2xl">
-                          <input
-                            type="text"
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="e.g. Send 0.001 ETH to 0x... privately"
-                            className="w-full bg-transparent rounded-2xl px-6 py-5 pr-28 text-[15px] font-mono text-text placeholder:text-text-3/70 focus:outline-none input-glow"
-                            autoFocus
-                          />
-                          <button
-                            type="submit"
-                            disabled={!inputValue.trim()}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 px-5 py-2.5 rounded-xl bg-gold/10 border border-gold/20 font-mono text-[12px] text-gold hover:bg-gold/20 hover:border-gold/30 transition-all disabled:opacity-20 disabled:pointer-events-none"
-                          >
-                            Execute
-                          </button>
-                        </div>
+                      <div className="absolute -inset-6 bg-gold/5 blur-[40px] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-700 pointer-events-none rounded-[100%]" />
+                      <div className="relative bg-surface/50 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-gold/10 via-transparent to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          placeholder="e.g. Send 0.001 ETH to 0x... privately"
+                          className="relative w-full bg-transparent rounded-2xl px-6 py-5 md:py-6 pr-32 text-[15px] md:text-[16px] font-mono text-white placeholder:text-white/30 focus:outline-none placeholder:transition-opacity focus:placeholder:opacity-50"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={!inputValue.trim()}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2.5 md:py-3 rounded-xl bg-gold text-bg font-mono text-[13px] font-bold hover:bg-gold-dim hover:scale-105 transition-all disabled:opacity-30 disabled:scale-100 disabled:hover:bg-gold flex items-center gap-2 shadow-lg shadow-gold/20"
+                        >
+                          Execute
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
+                        </button>
                       </div>
                     </motion.form>
 
                     {/* Quick tasks */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full mt-8 relative z-10">
                       {QUICK_TASKS.map((qt, i) => (
                         <motion.button
                           key={qt.label}
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.35 + i * 0.08 }}
                           onClick={() => setInputValue(qt.template)}
-                          className="text-left glass rounded-xl px-4 py-4 hover:border-white/[0.1] transition-all group stat-card cursor-pointer"
+                          className="text-left bg-surface/40 hover:bg-white/[0.04] border border-white/[0.05] hover:border-gold/30 rounded-2xl px-5 py-5 transition-all duration-300 group hover:-translate-y-1 hover:shadow-xl hover:shadow-gold/5 cursor-pointer relative overflow-hidden"
                         >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-white/[0.03] flex items-center justify-center text-text-3 group-hover:text-gold transition-colors">
-                              {qt.icon}
+                          <div className="absolute inset-0 bg-gradient-to-br from-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                          <div className="relative z-10 flex flex-col h-full">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-8 h-8 rounded-xl bg-white/[0.04] group-hover:bg-gold/10 flex items-center justify-center text-white/40 group-hover:text-gold transition-colors duration-300 shadow-inner">
+                                {qt.icon}
+                              </div>
+                              <span className="text-[9px] font-mono text-white/30 group-hover:text-gold/60 uppercase tracking-widest transition-colors duration-300">
+                                {qt.method}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-mono text-text-3/60 uppercase tracking-wider">
-                              {qt.method}
+                            <span className="text-[14px] font-medium text-white/90 block mb-1">
+                              {qt.label}
+                            </span>
+                            <span className="text-[12px] text-white/40 block leading-relaxed flex-1">
+                              {qt.desc}
+                            </span>
+                            <span className="text-[10px] font-mono text-gold/0 group-hover:text-gold/80 mt-4 flex items-center gap-1.5 transition-colors duration-300">
+                              {qt.hint} 
+                              <span className="group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
                             </span>
                           </div>
-                          <span className="text-[13px] text-text block">
-                            {qt.label}
-                          </span>
-                          <span className="text-[11px] text-text-3 mt-0.5 block">
-                            {qt.desc}
-                          </span>
-                          <span className="text-[9px] font-mono text-gold/0 group-hover:text-gold/60 mt-1.5 block transition-colors">
-                            {qt.hint} &rarr;
-                          </span>
                         </motion.button>
                       ))}
                     </div>
@@ -502,7 +510,7 @@ export default function AppPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-auto pt-8"
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-auto pt-10 relative z-10"
                   >
                     {[
                       {
@@ -528,17 +536,17 @@ export default function AppPage() {
                     ].map((s) => (
                       <div
                         key={s.label}
-                        className="glass rounded-xl px-4 py-3.5"
+                        className="bg-surface/30 backdrop-blur-md rounded-2xl px-5 py-4 border border-white/5 shadow-lg group hover:bg-white/[0.02] transition-colors"
                       >
-                        <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
                           {s.label}
                         </p>
                         <p
-                          className={`text-xl font-mono ${s.accent ? "text-gold" : "text-text"}`}
+                          className={`text-2xl font-mono tracking-tight ${s.accent ? "text-gold drop-shadow-[0_0_12px_rgba(235,193,121,0.4)]" : "text-white/90"}`}
                         >
                           {s.value}
                         </p>
-                        <p className="text-[10px] font-mono text-text-3/60 mt-0.5">
+                        <p className="text-[10px] font-mono text-white/30 mt-1">
                           {s.sub}
                         </p>
                       </div>
@@ -547,18 +555,21 @@ export default function AppPage() {
                     {/* Vault deposit card */}
                     <button
                       onClick={() => setShowDeposit(true)}
-                      className="glass rounded-xl px-4 py-3.5 stat-card text-left group hover:border-gold/20 transition-colors cursor-pointer"
+                      className="bg-surface/30 backdrop-blur-md rounded-2xl px-5 py-4 text-left border border-white/5 shadow-lg group hover:border-gold/30 hover:bg-white/[0.04] transition-all cursor-pointer relative overflow-hidden"
                     >
-                      <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                        Vault Balance
-                      </p>
-                      <p className="text-xl font-mono text-gold">
-                        {vaultBalance ? `${vaultBalance}` : "\u2014"}{" "}
-                        <span className="text-[12px] text-text-3/70">ETH</span>
-                      </p>
-                      <p className="text-[10px] font-mono text-text-3/70 group-hover:text-gold/60 mt-0.5 transition-colors">
-                        Click to deposit &rarr;
-                      </p>
+                      <div className="absolute inset-0 bg-gradient-to-br from-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1.5">
+                          Vault Balance
+                        </p>
+                        <p className="text-2xl font-mono text-gold drop-shadow-[0_0_12px_rgba(235,193,121,0.4)] tracking-tight">
+                          {vaultBalance ? `${vaultBalance}` : "\u2014"}{" "}
+                          <span className="text-[13px] text-white/40">ETH</span>
+                        </p>
+                        <p className="text-[10px] font-mono text-gold/60 mt-1 flex items-center gap-1 group-hover:text-gold/90 transition-colors">
+                          Deposit <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                        </p>
+                      </div>
                     </button>
                   </motion.div>
 
@@ -584,63 +595,66 @@ export default function AppPage() {
                   transition={{ duration: 0.4 }}
                   className="flex-1 flex flex-col items-center justify-center"
                 >
-                  <div className="w-full max-w-lg text-center">
+                  <div className="w-full max-w-lg text-center relative">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gold/10 blur-[80px] rounded-full pointer-events-none" />
+                    
                     {/* Animated shield */}
-                    <div className="relative w-20 h-20 mx-auto mb-8">
+                    <div className="relative w-24 h-24 mx-auto mb-10">
+                      <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-gold/20 to-transparent animate-spin-slow rotate-45 mix-blend-screen" />
+                      <div className="absolute inset-2 rounded-[2rem] bg-gradient-to-tl from-gold/20 to-transparent animate-spin-reverse-slow rotate-12 mix-blend-screen" />
                       <div
                         className="absolute inset-0 rounded-full bg-gold/5 animate-ping"
                         style={{ animationDuration: "3s" }}
                       />
                       <div
-                        className="absolute inset-2 rounded-full bg-gold/10 animate-ping"
-                        style={{
-                          animationDuration: "3s",
-                          animationDelay: "0.5s",
-                        }}
+                        className="absolute inset-4 rounded-full bg-gold/10 animate-ping"
+                        style={{ animationDuration: "3s", animationDelay: "0.5s" }}
                       />
-                      <div className="relative w-20 h-20 rounded-full glass flex items-center justify-center">
-                        <div className="w-4 h-4 rounded-full bg-gold animate-pulse-dot" />
+                      <div className="relative w-24 h-24 rounded-full bg-surface/80 border border-gold/20 backdrop-blur-xl flex items-center justify-center shadow-[0_0_40px_-10px_rgba(235,193,121,0.3)]">
+                        <div className="w-5 h-5 rounded-full bg-gold shadow-[0_0_20px_rgba(235,193,121,0.7)] animate-pulse-dot" />
                       </div>
                     </div>
 
-                    <h2 className="font-serif text-2xl text-text mb-2">
+                    <h2 className="font-serif text-4xl text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/40 mb-4 tracking-tight">
                       Processing privately
                     </h2>
-                    <p className="text-[13px] text-text-3 mb-8 max-w-sm mx-auto">
-                      Venice AI is reasoning about your task with zero data
-                      retention. No prompts stored. No responses logged.
+                    <p className="text-[15px] text-white/40 mb-10 max-w-sm mx-auto leading-relaxed">
+                      <span className="text-gold/70 italic font-serif">Venice AI</span> is reasoning about your task with zero data retention. No prompts stored. No logs kept.
                     </p>
 
                     {/* Task */}
-                    <div className="glass rounded-xl p-4 mb-4 text-left">
-                      <p className="text-[10px] font-mono uppercase tracking-wider text-text-3 mb-1">
-                        Task
-                      </p>
-                      <p className="text-[13px] font-mono text-text truncate">
+                    <div className="bg-surface/50 border border-white/5 backdrop-blur-xl rounded-2xl p-5 mb-6 text-left shadow-lg">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-2 h-2 rounded-full bg-white/20" />
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">
+                          Encrypted Task
+                        </span>
+                      </div>
+                      <p className="text-[15px] font-mono text-white/90 truncate pl-5">
                         {task}
                       </p>
                     </div>
 
                     {/* Live activity */}
-                    <div className="glass rounded-xl p-4 text-left">
-                      <div className="flex items-center gap-2 mb-3">
+                    <div className="bg-surface/50 border border-white/5 backdrop-blur-xl rounded-2xl p-5 text-left shadow-lg">
+                      <div className="flex items-center gap-3 mb-4">
                         <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot" />
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-text-3">
-                          Live Activity
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-gold/80">
+                          Live Agent Activity
                         </span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-3">
                         {liveLog.slice(-4).map((entry, i) => (
                           <motion.div
                             key={i}
                             initial={{ opacity: 0, x: -8 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="flex items-start gap-2"
+                            className="flex items-start gap-4 p-2 rounded-lg hover:bg-white/[0.02] transition-colors"
                           >
-                            <span className="text-[10px] text-text-3 font-mono shrink-0 mt-0.5 w-12">
+                            <span className="text-[10px] text-white/30 font-mono shrink-0 mt-1 w-14 tracking-wider">
                               {entry.time}
                             </span>
-                            <span className="text-[12px] text-text-2 font-mono">
+                            <span className="text-[13px] text-white/80 font-mono leading-relaxed">
                               {entry.action}
                             </span>
                           </motion.div>
@@ -649,10 +663,10 @@ export default function AppPage() {
                     </div>
 
                     {/* Shimmer bar */}
-                    <div className="mt-6 h-0.5 w-full rounded-full overflow-hidden bg-white/[0.03]">
+                    <div className="mt-8 h-1 w-full rounded-full overflow-hidden bg-white/[0.03] shadow-inner">
                       <div
-                        className="h-full shimmer rounded-full"
-                        style={{ width: "100%" }}
+                        className="h-full bg-gradient-to-r from-transparent via-gold/50 to-transparent animate-shimmer rounded-full"
+                        style={{ width: "100%", backgroundSize: "200% 100%" }}
                       />
                     </div>
                   </div>
@@ -674,12 +688,14 @@ export default function AppPage() {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="glass rounded-2xl p-8 max-w-lg mx-auto"
+                      className="bg-surface/30 backdrop-blur-3xl rounded-3xl border border-white/5 p-8 max-w-lg mx-auto shadow-2xl relative overflow-hidden"
                     >
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-[50px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
+                      
                       {/* Back button */}
                       <button
                         onClick={handleReset}
-                        className="text-[12px] font-mono text-text-3 hover:text-text transition-colors flex items-center gap-1.5 mb-6"
+                        className="text-[12px] font-mono text-white/40 hover:text-white transition-colors flex items-center gap-2 mb-8 relative z-10 hover:-translate-x-0.5"
                       >
                         <svg
                           width="14"
@@ -691,64 +707,61 @@ export default function AppPage() {
                         >
                           <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
-                        Back
+                        Back to Terminal
                       </button>
 
                       {/* User message */}
-                      <div className="flex justify-end mb-4">
-                        <div className="bg-white/[0.04] rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%]">
-                          <p className="text-[13px] text-text font-mono">
+                      <div className="flex justify-end mb-6 relative z-10">
+                        <div className="bg-white/[0.04] border border-white/5 rounded-2xl rounded-tr-sm px-5 py-3.5 max-w-[85%] shadow-md">
+                          <p className="text-[14px] text-white/90 font-mono leading-relaxed">
                             {task}
                           </p>
                         </div>
                       </div>
 
                       {/* Shade response */}
-                      <div className="flex justify-start">
+                      <div className="flex justify-start relative z-10">
                         <div className="max-w-[90%]">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-5 h-5 rounded-md bg-gold/10 flex items-center justify-center">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gold" />
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-6 h-6 rounded-lg bg-gold/10 flex items-center justify-center border border-gold/20 shadow-inner">
+                              <div className="w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(235,193,121,0.8)]" />
                             </div>
-                            <span className="text-[11px] font-mono text-gold">
-                              Shade
+                            <span className="text-[12px] font-mono uppercase tracking-widest text-gold/80">
+                              Shade Agent
                             </span>
                           </div>
-                          <p className="text-[14px] text-text-2 leading-relaxed mb-4">
-                            I appreciate the message! But I&apos;m specifically
-                            built for private on-chain actions — I can send ETH,
-                            make payments, or donate anonymously without ever
-                            revealing your identity.
-                          </p>
-                          <p className="text-[12px] text-text-3 mb-3">
-                            Here, try one of these:
-                          </p>
-                          <div className="flex flex-col gap-2">
-                            {[
-                              {
-                                label: "Private transfer",
-                                task: `Transfer 0.0001 ETH from vault to ${address || "0x..."} privately`,
-                              },
-                              {
-                                label: "Anonymous donation",
-                                task: `Donate 0.00005 ETH anonymously to ${address || "0x..."}`,
-                              },
-                            ].map((example) => (
-                              <button
-                                key={example.label}
-                                onClick={() => handleSubmit(example.task)}
-                                className="text-left glass rounded-lg px-4 py-3 group hover:border-gold/20 transition-colors"
-                              >
-                                <span className="text-[12px] text-text block">
-                                  {example.label}
-                                </span>
-                                <span className="text-[10px] font-mono text-text-3/70 group-hover:text-gold/60 transition-colors">
-                                  {example.task.length > 45
-                                    ? example.task.slice(0, 45) + "..."
-                                    : example.task}
-                                </span>
-                              </button>
-                            ))}
+                          <div className="bg-surface/50 border border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-lg">
+                            <p className="text-[15px] text-white/80 leading-relaxed mb-5 font-mono">
+                              I interpret your intent clearly. However, my execution layer is specifically optimized for private on-chain actions — I can send ETH, stream payments, or execute swaps without revealing your identity.
+                            </p>
+                            <p className="text-[11px] uppercase tracking-widest text-white/30 mb-3 font-mono">
+                              Suggested Execute Commands:
+                            </p>
+                            <div className="flex flex-col gap-3">
+                              {[
+                                {
+                                  label: "Private Vault Transfer",
+                                  task: `Transfer 0.0001 ETH from vault to ${address || "0x..."} privately`,
+                                },
+                                {
+                                  label: "Anonymous Donation",
+                                  task: `Donate 0.00005 ETH anonymously to ${address || "0x..."}`,
+                                },
+                              ].map((example) => (
+                                <button
+                                  key={example.label}
+                                  onClick={() => handleSubmit(example.task)}
+                                  className="text-left bg-surface/80 rounded-xl px-4 py-3.5 group border border-white/5 hover:border-gold/30 hover:bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                                >
+                                  <span className="text-[13px] text-white/90 font-medium block mb-1">
+                                    {example.label}
+                                  </span>
+                                  <span className="text-[11px] font-mono text-white/40 group-hover:text-gold/70 transition-colors block truncate">
+                                    {example.task}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -760,11 +773,13 @@ export default function AppPage() {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="glass rounded-2xl p-8 max-w-lg mx-auto"
+                      className="bg-surface/30 backdrop-blur-3xl rounded-3xl border border-white/5 p-8 max-w-lg mx-auto shadow-2xl relative overflow-hidden"
                     >
+                      <div className="absolute top-0 left-0 w-64 h-64 bg-gold/10 blur-[50px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+                      
                       <button
                         onClick={handleReset}
-                        className="text-[12px] font-mono text-text-3 hover:text-text transition-colors flex items-center gap-1.5 mb-6"
+                        className="text-[12px] font-mono text-white/40 hover:text-white transition-colors flex items-center gap-2 mb-8 relative z-10 hover:-translate-x-0.5"
                       >
                         <svg
                           width="14"
@@ -776,14 +791,14 @@ export default function AppPage() {
                         >
                           <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
-                        Back
+                        Back to Terminal
                       </button>
 
-                      <div className="flex items-start gap-4 mb-5">
-                        <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+                      <div className="flex items-start gap-5 mb-8 relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-gold/10 flex items-center justify-center shrink-0 border border-gold/20 shadow-inner">
                           <svg
-                            width="18"
-                            height="18"
+                            width="20"
+                            height="20"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="var(--color-gold)"
@@ -794,73 +809,64 @@ export default function AppPage() {
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-[15px] text-text font-medium">
-                            DCA Order Active
+                          <h3 className="text-[18px] text-white/90 font-serif mb-1 tracking-tight">
+                            Smart DCA Active
                           </h3>
-                          <p className="text-[12px] text-text-3 mt-1">
-                            Monitoring ETH price every 30 seconds. Will execute
-                            privately when triggered.
+                          <p className="text-[13px] text-white/50 leading-relaxed font-mono">
+                            Monitoring price feed every 30s. Trigger executes via encrypted network pool.
                           </p>
                         </div>
                       </div>
 
-                      <div className="glass rounded-xl p-4 space-y-3 mb-5">
+                      <div className="bg-surface/60 rounded-2xl p-5 border border-white/5 space-y-4 mb-6 relative z-10 shadow-lg">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-text-3">
+                          <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
                             Condition
                           </span>
-                          <span className="text-[12px] font-mono text-text">
+                          <span className="text-[13px] font-mono text-white/90">
                             ETH{" "}
                             {result.dcaOrder.type === "price_below"
-                              ? "drops below"
+                              ? "falls below"
                               : "rises above"}{" "}
-                            ${result.dcaOrder.targetPrice.toLocaleString()}
+                            <span className="text-gold">${result.dcaOrder.targetPrice.toLocaleString()}</span>
                           </span>
                         </div>
+                        <div className="w-full h-px bg-white/5" />
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-text-3">
+                          <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
                             Action
                           </span>
-                          <span className="text-[12px] font-mono text-text">
-                            Send {result.dcaOrder.amount} ETH privately
+                          <span className="text-[13px] font-mono text-white/90">
+                            Transfer {result.dcaOrder.amount} ETH
                           </span>
                         </div>
+                        <div className="w-full h-px bg-white/5" />
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-text-3">
+                          <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
                             Current Price
                           </span>
-                          <span className="text-[12px] font-mono text-gold">
-                            $
-                            {result.dcaOrder.currentPrice?.toLocaleString() ||
-                              "..."}
+                          <span className="text-[13px] font-mono text-white/50">
+                            ShadeVault [Stealth]
                           </span>
                         </div>
+                        <div className="w-full h-px bg-white/5" />
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-text-3">
+                          <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
                             Status
                           </span>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot" />
-                            <span className="text-[12px] font-mono text-gold">
+                          <div className="flex items-center gap-2 px-2.5 py-1 bg-gold/10 rounded-md border border-gold/20">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse-dot shadow-[0_0_8px_rgba(235,193,121,0.8)]" />
+                            <span className="text-[10px] font-mono uppercase tracking-widest text-gold">
                               Monitoring
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-text-3">
-                            Method
-                          </span>
-                          <span className="text-[12px] font-mono text-text-3">
-                            ShadeVault (private)
-                          </span>
-                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] font-mono text-text-3/60">
-                        <div className="w-1 h-1 rounded-full bg-safe" />
-                        <span>
-                          Your identity stays hidden — agent wallet executes all
-                          trades
+                      <div className="flex items-start gap-3 mt-4 px-2 relative z-10">
+                        <div className="w-1.5 h-1.5 rounded-full bg-safe mt-1 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                        <span className="text-[11px] font-mono text-white/40 leading-relaxed">
+                          Your identity remains hidden. The agent wallet executes all parameters anonymously.
                         </span>
                       </div>
                     </motion.div>
@@ -957,20 +963,26 @@ export default function AppPage() {
 
                   {/* Successful execution */}
                   {!isGeneral && !isDCA && execSuccess && (
-                    <>
-                      <div className="flex items-center justify-between">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-surface/30 backdrop-blur-3xl rounded-3xl border border-white/5 p-8 w-full max-w-4xl mx-auto shadow-2xl relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-safe/10 blur-[60px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
+                      
+                      <div className="flex items-center justify-between mb-8 relative z-10">
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-2 h-2 rounded-full bg-safe" />
-                            <p className="text-[10px] font-mono uppercase tracking-wider text-safe">
-                              Task Complete
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-safe shadow-[0_0_12px_rgba(52,211,153,0.6)] animate-pulse" />
+                            <p className="text-[11px] font-mono uppercase tracking-widest text-safe font-semibold">
+                              Task Completed
                             </p>
                           </div>
-                          <h2 className="text-lg font-mono text-text">
+                          <h2 className="text-xl md:text-2xl font-serif text-white/90">
                             {task}
                           </h2>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <PrivacyScore
                             score={result.privacyScore}
                             fieldsHidden={result.fieldsHidden}
@@ -981,7 +993,7 @@ export default function AppPage() {
                           />
                           <button
                             onClick={handleReset}
-                            className="px-4 py-2 rounded-xl glass font-mono text-[12px] text-text-3 hover:text-text transition-colors"
+                            className="px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-mono text-[13px] text-white hover:border-white/20 transition-all hover:-translate-y-0.5"
                           >
                             New Task
                           </button>
@@ -992,23 +1004,23 @@ export default function AppPage() {
                       <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl border border-safe/15 bg-safe/[0.06] p-5"
+                        className="rounded-2xl border border-safe/20 bg-gradient-to-r from-safe/[0.08] to-transparent p-6 mb-8 relative z-10"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-safe/10 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-safe/10 flex items-center justify-center shrink-0 border border-safe/20 shadow-inner">
                             <svg
-                              width="18"
-                              height="18"
+                              width="20"
+                              height="20"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="var(--color-safe)"
-                              strokeWidth="2"
+                              strokeWidth="2.5"
                             >
                               <path d="M20 6L9 17l-5-5" />
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <p className="text-[14px] font-mono text-text">
+                            <p className="text-[16px] font-mono text-white mb-1 tracking-tight">
                               {result.execution!.amount}{" "}
                               {result.execution!.currency} sent via{" "}
                               {result.execution!.method === "locus"
@@ -1020,12 +1032,12 @@ export default function AppPage() {
                                 href={`https://sepolia.basescan.org/tx/${result.execution!.txHash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[11px] font-mono text-gold hover:text-gold-dim transition-colors inline-flex items-center gap-1 mt-0.5"
+                                className="text-[12px] font-mono text-gold hover:text-gold-dim transition-colors inline-flex items-center gap-1.5 opacity-80 hover:opacity-100"
                               >
                                 Verify on BaseScan
                                 <svg
-                                  width="10"
-                                  height="10"
+                                  width="12"
+                                  height="12"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -1040,9 +1052,9 @@ export default function AppPage() {
                       </motion.div>
 
                       {/* Action buttons */}
-                      <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 relative z-10">
                         <div
-                          className="flex items-center gap-3 px-4 py-3 rounded-xl glass hover:border-gold/20 transition-colors cursor-pointer group"
+                          className="flex items-center gap-4 px-5 py-4 rounded-xl bg-surface/60 border border-white/[0.05] hover:border-gold/30 hover:bg-white/[0.04] transition-all cursor-pointer group hover:-translate-y-1 hover:shadow-lg hover:shadow-gold/5"
                           onClick={() => {
                             const el =
                               document.querySelector<HTMLButtonElement>(
@@ -1051,10 +1063,10 @@ export default function AppPage() {
                             el?.click();
                           }}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                             <svg
-                              width="14"
-                              height="14"
+                              width="16"
+                              height="16"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="var(--color-gold)"
@@ -1066,10 +1078,10 @@ export default function AppPage() {
                             </svg>
                           </div>
                           <div>
-                            <span className="text-[12px] text-text block">
+                            <span className="text-[14px] font-medium text-white/90 block mb-0.5">
                               Export Report
                             </span>
-                            <span className="text-[10px] text-text-3/70 font-mono">
+                            <span className="text-[11px] text-white/40 font-mono">
                               Download PDF audit log
                             </span>
                           </div>
@@ -1153,7 +1165,7 @@ export default function AppPage() {
                           },
                         ]}
                       />
-                    </>
+                    </motion.div>
                   )}
                 </motion.div>
               )}
@@ -1167,23 +1179,26 @@ export default function AppPage() {
                   exit={{ opacity: 0 }}
                   className="flex-1 flex items-center justify-center"
                 >
-                  <div className="glass rounded-2xl p-10 text-center max-w-md">
-                    <div className="w-10 h-10 rounded-xl bg-exposed/10 flex items-center justify-center mx-auto mb-4">
-                      <div className="w-2 h-2 rounded-full bg-exposed" />
+                  <div className="bg-surface/30 backdrop-blur-3xl border border-exposed/10 rounded-3xl p-10 text-center max-w-md shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-1/2 w-48 h-48 bg-exposed/10 blur-[40px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+                    <div className="relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-exposed/10 flex items-center justify-center mx-auto mb-6 border border-exposed/20 shadow-inner">
+                        <div className="w-3 h-3 rounded-full bg-exposed shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse" />
+                      </div>
+                      <h3 className="text-[18px] text-white/90 font-serif mb-2 tracking-tight">
+                        Connection Failed
+                      </h3>
+                      <p className="text-[14px] text-white/60 mb-3">{errorMsg}</p>
+                      <p className="text-[11px] text-white/30 font-mono mb-8 bg-surface/50 p-2 rounded-lg border border-white/5 mx-4">
+                        Is the agent running? <span className="text-white/50">cd agent && pnpm dev</span>
+                      </p>
+                      <button
+                        onClick={handleReset}
+                        className="px-6 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-mono text-[13px] text-white hover:border-white/20 transition-all hover:-translate-y-0.5"
+                      >
+                        Try again
+                      </button>
                     </div>
-                    <h3 className="text-[15px] text-text font-medium mb-2">
-                      Connection Failed
-                    </h3>
-                    <p className="text-[13px] text-text-3 mb-2">{errorMsg}</p>
-                    <p className="text-[11px] text-text-3/70 font-mono mb-6">
-                      Is the agent running? cd agent && pnpm dev
-                    </p>
-                    <button
-                      onClick={handleReset}
-                      className="px-5 py-2.5 rounded-xl glass font-mono text-[12px] text-text-2 hover:text-text transition-colors"
-                    >
-                      Try again
-                    </button>
                   </div>
                 </motion.div>
               )}
