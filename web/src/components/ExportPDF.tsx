@@ -58,7 +58,7 @@ export function ExportPDF(props: ExportPDFProps) {
     addLine(`Fields Hidden: ${fieldsHidden}  |  Fields Revealed: ${fieldsRevealed}`, 10, "#A1A1AA");
     addLine(`Intent Category: ${intentCategory}`, 10, "#A1A1AA");
     const costDisplay = intentCategory === "payment"
-      ? `$${(cost * 1e12).toFixed(2)} USDC`
+      ? `$${(cost < 0.0001 ? cost * 1e12 : cost).toFixed(2)} USDC`
       : cost > 0 ? `${cost} ETH` : "—";
     addLine(`Cost: ${costDisplay}`, 10, "#A1A1AA");
     addGap();

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShadeLogo } from "./ShadeLogo";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
-import { useRef, type ReactNode } from "react";
+import { useRef, useEffect, useState, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 
@@ -100,10 +100,21 @@ function FadeUp({
   );
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
+
 export function Landing() {
   const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const router = useRouter();
+
+  const [stats, setStats] = useState<{ taskCount: number; successCount: number; privacyScore: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/stats`)
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, []);
 
   const handleConnect = () => {
     if (isConnected) {
@@ -477,6 +488,34 @@ export function Landing() {
           </div>
         </div>
       </Slide>
+
+      {/* ─────── Global Agent Stats ─────── */}
+      {stats && stats.taskCount > 0 && (
+        <div className="relative bg-bg py-20 z-10">
+          <div className="max-w-4xl mx-auto px-8">
+            <FadeUp>
+              <p className="font-mono text-[11px] tracking-[0.3em] uppercase text-text-3 mb-4 text-center">
+                Live Agent Metrics
+              </p>
+            </FadeUp>
+            <div className="grid grid-cols-3 gap-6">
+              {[
+                { label: "Tasks Executed", value: stats.taskCount, sub: "On-chain verified" },
+                { label: "Successful", value: stats.successCount, sub: "Completed privately" },
+                { label: "Privacy Score", value: `${stats.privacyScore}%`, sub: "Avg. across all tasks" },
+              ].map((s, i) => (
+                <FadeUp key={s.label} delay={i * 0.1}>
+                  <div className="text-center py-6">
+                    <p className="text-4xl md:text-5xl font-mono text-gold font-medium mb-2">{s.value}</p>
+                    <p className="text-[13px] text-white font-medium mb-1">{s.label}</p>
+                    <p className="text-[11px] font-mono text-white/40">{s.sub}</p>
+                  </div>
+                </FadeUp>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─────── SLIDE 5: CTA ─────── */}
       <Slide

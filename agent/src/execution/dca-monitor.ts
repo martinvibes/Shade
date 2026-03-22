@@ -12,6 +12,7 @@ export interface DCAOrder {
   amount: number;
   currency: "ETH";
   recipient: string;
+  userAddress?: string;
   status: "active" | "triggered" | "failed" | "cancelled";
   createdAt: number;
   triggeredAt?: number;
@@ -58,6 +59,8 @@ loadOrders();
 
 const VAULT_ABI = [
   "function spend(address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function spendFrom(address user, address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function getUserBalance(address user) external view returns (uint256)",
   "function whitelisted(address) external view returns (bool)",
   "function setWhitelist(address recipient, bool status) external",
   "function getBalance() external view returns (uint256)",
@@ -141,19 +144,31 @@ async function checkAndExecute(order: DCAOrder): Promise<void> {
       await wlTx.wait();
     }
 
-    // Check balance
-    const balance = await vault.getBalance();
+    // Check balance (per-user if available)
     const amountWei = ethers.parseEther(String(order.amount));
-    if (balance < amountWei) {
-      order.status = "failed";
-      saveOrders();
-      console.log(`[DCA] Insufficient vault balance`);
-      return;
+    if (order.userAddress) {
+      const userBal = await vault.getUserBalance(order.userAddress);
+      if (userBal < amountWei) {
+        order.status = "failed";
+        saveOrders();
+        console.log(`[DCA] Insufficient user balance for ${order.userAddress}`);
+        return;
+      }
+    } else {
+      const balance = await vault.getBalance();
+      if (balance < amountWei) {
+        order.status = "failed";
+        saveOrders();
+        console.log(`[DCA] Insufficient vault balance`);
+        return;
+      }
     }
 
     // Execute spend
     const intentHash = ethers.keccak256(ethers.toUtf8Bytes("dca_transfer"));
-    const tx = await vault.spend(order.recipient, amountWei, intentHash);
+    const tx = order.userAddress
+      ? await vault.spendFrom(order.userAddress, order.recipient, amountWei, intentHash)
+      : await vault.spend(order.recipient, amountWei, intentHash);
     const receipt = await tx.wait();
 
     order.status = "triggered";

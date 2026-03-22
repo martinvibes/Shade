@@ -6,20 +6,24 @@ import { motion, AnimatePresence } from "framer-motion";
 const API_BASE = process.env.NEXT_PUBLIC_AGENT_API || "http://localhost:3001";
 
 interface TaskRecord {
-  index: number;
+  index?: number;
   taskHash: string;
   intentCategory: string;
   cost: string;
+  currency?: string;
   fieldsHidden: number;
   fieldsRevealed: number;
   success: boolean;
   timestamp: number;
-  date: string;
+  date?: string;
   txHash: string | null;
+  recipient?: string;
+  method?: string;
 }
 
 interface TaskHistoryProps {
   refreshKey?: number;
+  userAddress?: string;
 }
 
 function TaskRow({ t, i }: { t: TaskRecord; i: number }) {
@@ -52,7 +56,13 @@ function TaskRow({ t, i }: { t: TaskRecord; i: number }) {
       </div>
       <span className="text-[11px] font-mono text-text-3 shrink-0">
         {t.intentCategory === "payment"
-          ? `$${(parseFloat(t.cost) * 1e12).toFixed(2)} USDC`
+          ? (() => {
+              const val = parseFloat(t.cost);
+              // If value is tiny (from on-chain 6-decimal encoding), multiply by 1e12
+              // If value is normal (from per-user history), show as-is
+              const usdc = val < 0.0001 ? val * 1e12 : val;
+              return `$${usdc.toFixed(2)} USDC`;
+            })()
           : parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014"}
       </span>
       <div className="flex items-center gap-1.5 shrink-0">
@@ -82,15 +92,21 @@ function TaskRow({ t, i }: { t: TaskRecord; i: number }) {
   );
 }
 
-export function TaskHistory({ refreshKey }: TaskHistoryProps) {
+export function TaskHistory({ refreshKey, userAddress }: TaskHistoryProps) {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
+    if (!userAddress) {
+      setTasks([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    fetch(`${API_BASE}/history`)
+    fetch(`${API_BASE}/user/history?user=${userAddress}`)
       .then((r) => r.json())
       .then((d) => {
         setTasks(d.tasks || []);
@@ -98,7 +114,7 @@ export function TaskHistory({ refreshKey }: TaskHistoryProps) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, userAddress]);
 
   const exportHistoryPDF = useCallback(async () => {
     const { jsPDF } = await import("jspdf");
@@ -151,9 +167,10 @@ export function TaskHistory({ refreshKey }: TaskHistoryProps) {
       doc.setTextColor("#FAFAFA");
       doc.text(t.intentCategory, 20, y);
       doc.setTextColor("#A1A1AA");
+      const costVal = parseFloat(t.cost);
       const costStr = t.intentCategory === "payment"
-        ? `$${(parseFloat(t.cost) * 1e12).toFixed(2)} USDC`
-        : parseFloat(t.cost) > 0 ? `${t.cost} ETH` : "\u2014";
+        ? `$${(costVal < 0.0001 ? costVal * 1e12 : costVal).toFixed(2)} USDC`
+        : costVal > 0 ? `${t.cost} ETH` : "\u2014";
       doc.text(costStr, 70, y);
       doc.setTextColor("#D4A853");
       doc.text(`${privacy}%`, 95, y);

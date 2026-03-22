@@ -11,6 +11,8 @@ const RECURRING_FILE = path.resolve(__dirname, "../../data/recurring-payments.js
 
 const VAULT_ABI = [
   "function spend(address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function spendFrom(address user, address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function getUserBalance(address user) external view returns (uint256)",
   "function whitelisted(address) external view returns (bool)",
   "function setWhitelist(address recipient, bool status) external",
   "function getBalance() external view returns (uint256)",
@@ -19,7 +21,8 @@ const VAULT_ABI = [
 export interface RecurringPayment {
   id: string;
   recipient: string;
-  recipientDisplay: string; // ENS or truncated address
+  recipientDisplay: string;
+  userAddress?: string;
   amount: number;
   currency: "ETH";
   intervalMs: number;
@@ -75,7 +78,8 @@ export function getIntervals() {
 export async function createRecurring(
   recipient: string,
   amount: number,
-  intervalKey: string
+  intervalKey: string,
+  userAddress?: string
 ): Promise<RecurringPayment> {
   const interval = INTERVALS[intervalKey] || INTERVALS["24h"];
   const id = `rec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -97,6 +101,7 @@ export async function createRecurring(
     id,
     recipient: resolvedAddress,
     recipientDisplay: display,
+    userAddress: userAddress || "",
     amount,
     currency: "ETH",
     intervalMs: interval.ms,
@@ -143,16 +148,26 @@ async function executeRecurring(payment: RecurringPayment) {
       await wlTx.wait();
     }
 
-    // Check balance
-    const balance = await vault.getBalance();
+    // Check balance (per-user if available)
     const amountWei = ethers.parseEther(String(payment.amount));
-    if (balance < amountWei) {
-      console.log(`[Recurring] Insufficient vault balance for ${payment.id}`);
-      return;
+    if (payment.userAddress) {
+      const userBal = await vault.getUserBalance(payment.userAddress);
+      if (userBal < amountWei) {
+        console.log(`[Recurring] Insufficient user balance for ${payment.id}`);
+        return;
+      }
+    } else {
+      const balance = await vault.getBalance();
+      if (balance < amountWei) {
+        console.log(`[Recurring] Insufficient vault balance for ${payment.id}`);
+        return;
+      }
     }
 
     const intentHash = ethers.keccak256(ethers.toUtf8Bytes("recurring_payment"));
-    const tx = await vault.spend(payment.recipient, amountWei, intentHash);
+    const tx = payment.userAddress
+      ? await vault.spendFrom(payment.userAddress, payment.recipient, amountWei, intentHash)
+      : await vault.spend(payment.recipient, amountWei, intentHash);
     const receipt = await tx.wait();
 
     payment.lastExecutedAt = Date.now();

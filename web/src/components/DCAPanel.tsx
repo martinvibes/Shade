@@ -36,6 +36,10 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
   const [chartMode, setChartMode] = useState<ChartMode>("line");
   const [loading, setLoading] = useState(true);
 
+  // User vault balance
+  const [vaultBalance, setVaultBalance] = useState<number>(0);
+  const [balanceError, setBalanceError] = useState("");
+
   // Form
   const [formType, setFormType] = useState<"price_below" | "price_above">("price_below");
   const [formPrice, setFormPrice] = useState("");
@@ -99,25 +103,42 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
 
   // Fetch orders from backend
   useEffect(() => {
-    fetch(`${API_BASE}/dca/orders`)
+    fetch(`${API_BASE}/dca/orders${userAddress ? `?user=${userAddress}` : ""}`)
       .then((r) => r.json())
       .then((d) => setOrders(d.orders || []))
       .catch(() => {});
 
     const interval = setInterval(() => {
-      fetch(`${API_BASE}/dca/orders`)
+      fetch(`${API_BASE}/dca/orders${userAddress ? `?user=${userAddress}` : ""}`)
         .then((r) => r.json())
         .then((d) => setOrders(d.orders || []))
         .catch(() => {});
     }, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [userAddress]);
 
   useEffect(() => { setFormRecipient(userAddress); }, [userAddress]);
 
+  // Fetch user vault balance
+  useEffect(() => {
+    if (!userAddress) return;
+    fetch(`${API_BASE}/vault/balance?user=${userAddress}`)
+      .then((r) => r.json())
+      .then((d) => setVaultBalance(parseFloat(d.balance || "0")))
+      .catch(() => {});
+  }, [userAddress]);
+
   const handleCreate = async () => {
     if (!formPrice || !formAmount) return;
+    setBalanceError("");
+
+    const amount = parseFloat(formAmount);
+    if (vaultBalance < amount) {
+      setBalanceError(`Insufficient vault balance. You have ${vaultBalance} ETH but need ${amount} ETH. Deposit first.`);
+      return;
+    }
+
     setCreating(true);
     try {
       const res = await fetch(`${API_BASE}/dca/create`, {
@@ -128,6 +149,7 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
           targetPrice: parseFloat(formPrice),
           amount: parseFloat(formAmount),
           recipient: formRecipient || userAddress,
+          userAddress,
         }),
       });
       const data = await res.json();
@@ -557,6 +579,20 @@ export function DCAPanel({ userAddress, onOrderCreated }: DCAPanelProps) {
                   </p>
                 </div>
               )}
+
+              {/* Balance warning */}
+              {balanceError && (
+                <div className="rounded-xl bg-exposed/10 border border-exposed/20 px-4 py-3">
+                  <p className="text-[12px] text-exposed">{balanceError}</p>
+                  <p className="text-[10px] text-text-3 mt-1">Go to Agent page and click the vault balance to deposit ETH.</p>
+                </div>
+              )}
+
+              {/* Vault balance indicator */}
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-text-3">Your vault balance</span>
+                <span className={vaultBalance > 0 ? "text-safe" : "text-exposed"}>{vaultBalance} ETH</span>
+              </div>
 
               <button
                 onClick={handleCreate}

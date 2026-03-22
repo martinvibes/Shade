@@ -7,7 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { parseEther } from "viem";
 import { baseSepolia } from "wagmi/chains";
 
-const VAULT_ADDRESS = "0x6a9E17F61023f3Cd39Cc1F29D4649E87BD004ebb" as const;
+const VAULT_ADDRESS = "0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC" as const;
 
 const PRESETS = [
   { label: "0.001 ETH", value: "0.001" },

@@ -9,6 +9,7 @@ export interface ClassifiedTask {
   currency: "USDC" | "ETH";
   description: string;
   intentCategory: string;
+  userAddress?: string;
 }
 
 /**

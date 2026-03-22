@@ -17,6 +17,8 @@ export interface ExecutionResult {
 
 const VAULT_ABI = [
   "function spend(address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function spendFrom(address user, address payable recipient, uint256 amount, bytes32 intentHash) external",
+  "function getUserBalance(address user) external view returns (uint256)",
   "function whitelisted(address) external view returns (bool)",
   "function setWhitelist(address recipient, bool status) external",
   "function getBalance() external view returns (uint256)",
@@ -142,20 +144,27 @@ async function executeVaultTransfer(task: ClassifiedTask): Promise<ExecutionResu
     const { signer } = getBaseSigner();
     const vault = new ethers.Contract(config.shadeVault, VAULT_ABI, signer);
 
-    // Check vault balance
-    const vaultBalance = await vault.getBalance();
     const amountWei = ethers.parseEther(String(task.amount));
 
-    if (vaultBalance < amountWei) {
-      return {
-        success: false,
-        txHash: null,
-        method: "vault",
-        amount: task.amount,
-        currency: "ETH",
-        recipient,
-        error: `Insufficient vault balance: ${ethers.formatEther(vaultBalance)} ETH < ${task.amount} ETH`,
-      };
+    // Check per-user balance if userAddress provided, otherwise total
+    if (task.userAddress) {
+      const userBal = await vault.getUserBalance(task.userAddress);
+      if (userBal < amountWei) {
+        return {
+          success: false, txHash: null, method: "vault",
+          amount: task.amount, currency: "ETH", recipient,
+          error: `Insufficient balance: ${ethers.formatEther(userBal)} ETH < ${task.amount} ETH. Deposit more to the vault.`,
+        };
+      }
+    } else {
+      const vaultBalance = await vault.getBalance();
+      if (vaultBalance < amountWei) {
+        return {
+          success: false, txHash: null, method: "vault",
+          amount: task.amount, currency: "ETH", recipient,
+          error: `Insufficient vault balance: ${ethers.formatEther(vaultBalance)} ETH < ${task.amount} ETH`,
+        };
+      }
     }
 
     // Auto-whitelist recipient if not already
@@ -179,13 +188,11 @@ async function executeVaultTransfer(task: ClassifiedTask): Promise<ExecutionResu
       };
     }
 
-    // Execute spend
+    // Execute spend — use spendFrom for per-user balance tracking
     const intentHash = ethers.keccak256(ethers.toUtf8Bytes(task.intentCategory));
-    const tx = await vault.spend(
-      recipient,
-      amountWei,
-      intentHash
-    );
+    const tx = task.userAddress
+      ? await vault.spendFrom(task.userAddress, recipient, amountWei, intentHash)
+      : await vault.spend(recipient, amountWei, intentHash);
     const receipt = await tx.wait();
 
     return {

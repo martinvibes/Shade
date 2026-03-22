@@ -36,7 +36,7 @@ app.get("/health", (_req, res) => {
 
 // ── Execute a task ──
 app.post("/task", async (req, res) => {
-  const { task, privacyLevel } = req.body;
+  const { task, privacyLevel, userAddress } = req.body;
 
   if (!task || typeof task !== "string") {
     res.status(400).json({ error: "task is required (string)" });
@@ -50,7 +50,7 @@ app.post("/task", async (req, res) => {
 
   try {
     console.log(`\n[Shade] Task received: "${task}" (privacy: ${level})`);
-    const result = await executeTask(task, level);
+    const result = await executeTask(task, level, userAddress);
 
     console.log(`[Shade] Task ${result.success ? "completed" : "failed"}`);
     console.log(`[Shade] Privacy score: ${result.privacyScore}%`);
@@ -207,23 +207,55 @@ app.get("/history", async (_req, res) => {
   }
 });
 
-// ── Vault balance ──
-app.get("/vault/balance", async (_req, res) => {
+// ── Per-user transaction history ──
+app.get("/user/history", async (req, res) => {
+  try {
+    const userAddr = req.query.user as string;
+    if (!userAddr) {
+      res.status(400).json({ error: "user query param required" });
+      return;
+    }
+    const { getUserHistory } = await import("./execution/user-history.js");
+    const transactions = getUserHistory(userAddr);
+    res.json({ total: transactions.length, tasks: transactions });
+  } catch (error: any) {
+    res.json({ total: 0, tasks: [] });
+  }
+});
+
+// ── Vault balance (per-user) ──
+app.get("/vault/balance", async (req, res) => {
   try {
     const { ethers } = await import("ethers");
     const provider = new ethers.JsonRpcProvider(config.baseSepoliaRpc);
+    const userAddr = req.query.user as string;
+
     const vault = new ethers.Contract(
       config.shadeVault,
-      ["function getBalance() external view returns (uint256)", "function getRemainingDailyBudget() external view returns (uint256)", "function maxPerTx() external view returns (uint256)", "function dailyBudget() external view returns (uint256)"],
+      [
+        "function getBalance() external view returns (uint256)",
+        "function getUserBalance(address) external view returns (uint256)",
+        "function getRemainingDailyBudget() external view returns (uint256)",
+        "function maxPerTx() external view returns (uint256)",
+        "function dailyBudget() external view returns (uint256)",
+      ],
       provider
     );
 
-    const [balance, remaining, maxPerTx, dailyBudget] = await Promise.all([
-      vault.getBalance(),
+    const calls: Promise<any>[] = [
       vault.getRemainingDailyBudget(),
       vault.maxPerTx(),
       vault.dailyBudget(),
-    ]);
+    ];
+
+    // If user address provided, get their balance. Otherwise get total.
+    if (userAddr && userAddr.startsWith("0x")) {
+      calls.unshift(vault.getUserBalance(userAddr));
+    } else {
+      calls.unshift(vault.getBalance());
+    }
+
+    const [balance, remaining, maxPerTx, dailyBudget] = await Promise.all(calls);
 
     res.json({
       address: config.shadeVault,
@@ -269,7 +301,7 @@ app.get("/locus/transactions", async (_req, res) => {
 
 // ── DCA: Create order ──
 app.post("/dca/create", async (req, res) => {
-  const { type, targetPrice, amount, recipient } = req.body;
+  const { type, targetPrice, amount, recipient, userAddress } = req.body;
 
   if (!type || !targetPrice || !amount || !recipient) {
     res.status(400).json({ error: "type, targetPrice, amount, and recipient are required" });
@@ -279,7 +311,7 @@ app.post("/dca/create", async (req, res) => {
   try {
     const { createOrder, getETHPrice } = await import("./execution/dca-monitor.js");
     const currentPrice = await getETHPrice();
-    const order = createOrder({ type, targetPrice, amount, currency: "ETH", recipient });
+    const order = createOrder({ type, targetPrice, amount, currency: "ETH", recipient, userAddress: userAddress || "" });
 
     console.log(`[DCA] Order created: ${type} $${targetPrice} → ${amount} ETH to ${recipient.slice(0, 10)}...`);
 
@@ -290,10 +322,14 @@ app.post("/dca/create", async (req, res) => {
 });
 
 // ── DCA: List orders ──
-app.get("/dca/orders", async (_req, res) => {
+app.get("/dca/orders", async (req, res) => {
   try {
     const { getOrders, getETHPrice } = await import("./execution/dca-monitor.js");
-    const orders = getOrders();
+    const userAddr = req.query.user as string;
+    let orders = getOrders();
+    if (userAddr) {
+      orders = orders.filter((o: any) => o.userAddress && o.userAddress.toLowerCase() === userAddr.toLowerCase());
+    }
     const currentPrice = await getETHPrice();
     res.json({ orders, currentPrice });
   } catch (error: any) {
@@ -359,16 +395,35 @@ let priceCache: { price: number; change24h: number; timestamp: number } | null =
 let chartCache: { line: any[]; ohlc: any[]; fetchedAt: number } | null = null;
 
 async function refreshPriceCache() {
+  // Try CoinGecko first
   try {
     const res = await fetch(
       "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true"
     );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ethereum?.usd) {
+        priceCache = {
+          price: data.ethereum.usd,
+          change24h: data.ethereum.usd_24h_change || 0,
+          timestamp: Date.now(),
+        };
+        return;
+      }
+    }
+  } catch { /* try fallback */ }
+
+  // Fallback: CoinLore (no API key, no rate limit)
+  try {
+    const res = await fetch("https://api.coinlore.net/api/ticker/?id=80");
     const data = await res.json();
-    priceCache = {
-      price: data.ethereum?.usd || 0,
-      change24h: data.ethereum?.usd_24h_change || 0,
-      timestamp: Date.now(),
-    };
+    if (data?.[0]?.price_usd) {
+      priceCache = {
+        price: parseFloat(data[0].price_usd),
+        change24h: parseFloat(data[0].percent_change_24h || "0"),
+        timestamp: Date.now(),
+      };
+    }
   } catch { /* keep old cache */ }
 }
 
@@ -417,24 +472,29 @@ app.get("/dca/chart", async (_req, res) => {
 
 // ── Recurring Payments ──
 app.post("/recurring/create", async (req, res) => {
-  const { recipient, amount, interval } = req.body;
+  const { recipient, amount, interval, userAddress } = req.body;
   if (!recipient || !amount || !interval) {
     res.status(400).json({ error: "recipient, amount, and interval required" });
     return;
   }
   try {
     const { createRecurring } = await import("./execution/recurring.js");
-    const payment = await createRecurring(recipient, amount, interval);
+    const payment = await createRecurring(recipient, amount, interval, userAddress);
     res.json({ payment });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get("/recurring/list", async (_req, res) => {
+app.get("/recurring/list", async (req, res) => {
   try {
     const { getRecurringPayments } = await import("./execution/recurring.js");
-    res.json({ payments: getRecurringPayments() });
+    const userAddr = req.query.user as string;
+    let payments = getRecurringPayments();
+    if (userAddr) {
+      payments = payments.filter((p: any) => p.userAddress && p.userAddress.toLowerCase() === userAddr.toLowerCase());
+    }
+    res.json({ payments });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -45,11 +45,13 @@ export default function RecurringPage() {
   const [formAmount, setFormAmount] = useState("0.0001");
   const [formInterval, setFormInterval] = useState("1h");
   const [creating, setCreating] = useState(false);
+  const [vaultBalance, setVaultBalance] = useState<number>(0);
+  const [balanceError, setBalanceError] = useState("");
 
   const fetchData = useCallback(async () => {
     try {
       const [paymentsRes, intervalsRes] = await Promise.all([
-        fetch(`${API_BASE}/recurring/list`),
+        fetch(`${API_BASE}/recurring/list${address ? `?user=${address}` : ""}`),
         fetch(`${API_BASE}/recurring/intervals`),
       ]);
       const pData = await paymentsRes.json();
@@ -59,7 +61,7 @@ export default function RecurringPage() {
     } catch { /* */ } finally {
       setLoading(false);
     }
-  }, []);
+  }, [address]);
 
   useEffect(() => {
     fetchData();
@@ -67,8 +69,25 @@ export default function RecurringPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // Fetch vault balance
+  useEffect(() => {
+    if (!address) return;
+    fetch(`${API_BASE}/vault/balance?user=${address}`)
+      .then((r) => r.json())
+      .then((d) => setVaultBalance(parseFloat(d.balance || "0")))
+      .catch(() => {});
+  }, [address]);
+
   const handleCreate = async () => {
     if (!formRecipient || !formAmount) return;
+    setBalanceError("");
+
+    const amount = parseFloat(formAmount);
+    if (vaultBalance < amount) {
+      setBalanceError(`Insufficient vault balance. You have ${vaultBalance} ETH but need ${amount} ETH. Deposit first on the Agent page.`);
+      return;
+    }
+
     setCreating(true);
     try {
       const res = await fetch(`${API_BASE}/recurring/create`, {
@@ -78,6 +97,7 @@ export default function RecurringPage() {
           recipient: formRecipient,
           amount: parseFloat(formAmount),
           interval: formInterval,
+          userAddress: address,
         }),
       });
       const data = await res.json();
@@ -274,6 +294,19 @@ export default function RecurringPage() {
                           </p>
                         </div>
                       )}
+
+                      {/* Balance warning */}
+                      {balanceError && (
+                        <div className="rounded-xl bg-exposed/10 border border-exposed/20 px-4 py-3">
+                          <p className="text-[12px] text-exposed">{balanceError}</p>
+                        </div>
+                      )}
+
+                      {/* Vault balance */}
+                      <div className="flex items-center justify-between text-[10px] font-mono">
+                        <span className="text-text-3">Your vault balance</span>
+                        <span className={vaultBalance > 0 ? "text-safe" : "text-exposed"}>{vaultBalance} ETH</span>
+                      </div>
 
                       <button
                         onClick={handleCreate}

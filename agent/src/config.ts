@@ -18,7 +18,7 @@ export const config = {
   statusSepoliaRpc: "https://public.sepolia.rpc.status.network",
 
   // Deployed contracts (Base Sepolia) — v2 with authorizedCaller
-  shadeVault: "0x6a9E17F61023f3Cd39Cc1F29D4649E87BD004ebb",
+  shadeVault: "0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC",
   shadeVerifier: "0xb2908FB08B189f2b91926705940E15D4E75ab501",
 
   // Deployed contracts (Status Sepolia) — v2

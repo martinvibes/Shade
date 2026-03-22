@@ -169,14 +169,36 @@ export default function AppPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetch(`${API_BASE}/stats`)
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => {});
-    fetch(`${API_BASE}/vault/balance`)
-      .then((r) => r.json())
-      .then((d) => setVaultBalance(d.balance))
-      .catch(() => {});
+    // Fetch per-user stats from user history
+    if (address) {
+      fetch(`${API_BASE}/user/history?user=${address}`)
+        .then((r) => r.json())
+        .then((d) => {
+          const tasks = d.tasks || [];
+          const successCount = tasks.filter((t: any) => t.success).length;
+          const totalFields = tasks.reduce((s: number, t: any) => s + t.fieldsHidden + t.fieldsRevealed, 0);
+          const hiddenFields = tasks.reduce((s: number, t: any) => s + t.fieldsHidden, 0);
+          const privacyScore = totalFields > 0 ? Math.round((hiddenFields / totalFields) * 100) : 0;
+          setStats({
+            taskCount: tasks.length,
+            successCount,
+            totalSpent: "0",
+            privacyScore,
+          });
+        })
+        .catch(() => {});
+    } else {
+      setStats(null);
+    }
+    // Only fetch user balance when wallet is connected
+    if (address) {
+      fetch(`${API_BASE}/vault/balance?user=${address}`)
+        .then((r) => r.json())
+        .then((d) => setVaultBalance(d.balance))
+        .catch(() => {});
+    } else {
+      setVaultBalance(null);
+    }
     fetch(`${API_BASE}/locus/status`)
       .then((r) => r.json())
       .then((d) => {
@@ -184,7 +206,7 @@ export default function AppPage() {
         setLocusWallet(d.wallet || "");
       })
       .catch(() => {});
-  }, [state, refreshKey]);
+  }, [state, refreshKey, address]);
 
   const handleSubmit = useCallback(
     async (taskStr: string) => {
@@ -210,7 +232,7 @@ export default function AppPage() {
         const res = await fetch(`${API_BASE}/task`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task: taskStr }),
+          body: JSON.stringify({ task: taskStr, userAddress: address }),
         });
         const data: TaskResult = await res.json();
         if (!res.ok) throw new Error("Agent request failed");
@@ -224,6 +246,9 @@ export default function AppPage() {
           })),
         );
         setState("complete");
+        // Refresh balance after a short delay (wait for on-chain confirmation)
+        setTimeout(() => setRefreshKey((k) => k + 1), 3000);
+        setTimeout(() => setRefreshKey((k) => k + 1), 8000);
       } catch (err: any) {
         setErrorMsg(err.message || "Failed to connect to agent");
         setState("error");
@@ -544,7 +569,7 @@ export default function AppPage() {
                     transition={{ delay: 0.6 }}
                     className="mt-4"
                   >
-                    <TaskHistory refreshKey={refreshKey} />
+                    <TaskHistory refreshKey={refreshKey} userAddress={address} />
                   </motion.div>
                 </motion.div>
               )}

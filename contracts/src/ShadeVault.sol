@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ShadeVerifier} from "./ShadeVerifier.sol";
 
-/// @title ShadeVault — Privacy-preserving agent treasury
-/// @notice Allows an agent to spend within budgets without exposing operator identity.
-///         The operator deposits once; from that point, only the agent's spending
-///         actions are visible on-chain. Events intentionally omit operator details.
+/// @title ShadeVault — Privacy-preserving agent treasury with per-user balances
+/// @notice Each user has their own balance within the vault. The agent can only
+///         spend from a user's balance with their deposit as the limit.
+///         Events intentionally omit operator/depositor details for privacy.
 contract ShadeVault is Ownable, ReentrancyGuard {
     /// @notice Maximum ETH (in wei) the agent can spend per transaction
     uint256 public maxPerTx;
@@ -25,38 +25,33 @@ contract ShadeVault is Ownable, ReentrancyGuard {
     /// @notice ERC-8004 agent ID linked to this vault
     uint256 public agentId;
 
+    /// @notice Per-user deposit balances
+    mapping(address => uint256) public userBalances;
+
     /// @notice Whitelisted recipients the agent is allowed to pay
     mapping(address => bool) public whitelisted;
+
+    /// @notice Authorized caller (agent wallet) that can spend on behalf of users
+    address public authorizedCaller;
 
     /// @notice Optional link to ShadeVerifier for auto-logging receipts
     ShadeVerifier public verifier;
 
     // ── Events (intentionally omit operator address for privacy) ──
 
-    /// @notice Emitted when the agent spends from the vault
-    /// @param recipient Who received the funds
-    /// @param amount How much was sent (wei)
-    /// @param intentHash keccak256 of the intent category (not full intent)
-    event SpendExecuted(
-        address indexed recipient,
-        uint256 amount,
-        bytes32 intentHash
-    );
-
-    /// @notice Emitted when spending policy is updated
+    event SpendExecuted(address indexed recipient, uint256 amount, bytes32 intentHash);
     event PolicyUpdated(uint256 maxPerTx, uint256 dailyBudget);
-
-    /// @notice Emitted when a recipient's whitelist status changes
     event RecipientWhitelisted(address indexed recipient, bool status);
-
-    /// @notice Emitted when ETH is deposited into the vault
-    event Deposited(uint256 amount);
-
-    /// @notice Emitted when the operator withdraws remaining funds
+    event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
-
-    /// @notice Emitted when the verifier is linked
+    event UserWithdrawn(address indexed user, uint256 amount);
     event VerifierSet(address indexed verifier);
+    event AuthorizedCallerSet(address indexed caller);
+
+    modifier onlyAuthorized() {
+        require(msg.sender == owner() || msg.sender == authorizedCaller, "Not authorized");
+        _;
+    }
 
     constructor(
         uint256 _agentId,
@@ -72,96 +67,120 @@ contract ShadeVault is Ownable, ReentrancyGuard {
         lastResetDay = block.timestamp / 1 days;
     }
 
-    /// @notice Agent spends from vault to a whitelisted recipient.
-    ///         Only reveals: recipient, amount, and a hash of the intent category.
-    /// @param recipient The address to send ETH to (must be whitelisted)
+    /// @notice Set the authorized caller (agent wallet)
+    function setAuthorizedCaller(address _caller) external onlyOwner {
+        authorizedCaller = _caller;
+        emit AuthorizedCallerSet(_caller);
+    }
+
+    /// @notice Agent spends from a specific user's balance
+    /// @param user The depositor whose balance to spend from
+    /// @param recipient The address to send ETH to
     /// @param amount The amount of ETH to send (in wei)
     /// @param intentHash keccak256 of the intent category string
+    function spendFrom(
+        address user,
+        address payable recipient,
+        uint256 amount,
+        bytes32 intentHash
+    ) external onlyAuthorized nonReentrant {
+        require(userBalances[user] >= amount, "Insufficient user balance");
+        userBalances[user] -= amount;
+        _executeSpend(recipient, amount, intentHash);
+    }
+
+    /// @notice Legacy spend (uses total vault balance, for backwards compat)
     function spend(
         address payable recipient,
         uint256 amount,
         bytes32 intentHash
-    ) external onlyOwner nonReentrant {
+    ) external onlyAuthorized nonReentrant {
         _executeSpend(recipient, amount, intentHash);
     }
 
     /// @notice Update the spending policy
-    /// @param _maxPerTx New per-transaction limit (wei)
-    /// @param _dailyBudget New daily budget (wei)
     function updatePolicy(
         uint256 _maxPerTx,
         uint256 _dailyBudget
     ) external onlyOwner {
         require(_maxPerTx > 0, "maxPerTx must be > 0");
         require(_dailyBudget >= _maxPerTx, "dailyBudget must be >= maxPerTx");
-
         maxPerTx = _maxPerTx;
         dailyBudget = _dailyBudget;
-
         emit PolicyUpdated(_maxPerTx, _dailyBudget);
     }
 
     /// @notice Add or remove a recipient from the whitelist
-    /// @param recipient The address to update
-    /// @param status true to whitelist, false to remove
-    function setWhitelist(
-        address recipient,
-        bool status
-    ) external onlyOwner {
+    function setWhitelist(address recipient, bool status) external onlyAuthorized {
         require(recipient != address(0), "Cannot whitelist zero address");
         whitelisted[recipient] = status;
-
         emit RecipientWhitelisted(recipient, status);
     }
 
-    /// @notice Withdraw all remaining funds back to the owner.
-    ///         This is the only function that sends to the owner.
+    /// @notice User withdraws their own remaining balance
+    function withdrawUser() external nonReentrant {
+        uint256 bal = userBalances[msg.sender];
+        require(bal > 0, "No balance to withdraw");
+        userBalances[msg.sender] = 0;
+        (bool sent, ) = msg.sender.call{value: bal}("");
+        require(sent, "Withdrawal failed");
+        emit UserWithdrawn(msg.sender, bal);
+    }
+
+    /// @notice Owner emergency withdraw
     function withdraw() external onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
         require(balance > 0, "No balance to withdraw");
-
         (bool sent, ) = msg.sender.call{value: balance}("");
         require(sent, "Withdrawal failed");
-
         emit Withdrawn(msg.sender, balance);
     }
 
-    /// @notice Get the vault's current ETH balance
+    /// @notice Get total vault balance
     function getBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+
+    /// @notice Get a user's deposited balance
+    function getUserBalance(address user) external view returns (uint256) {
+        return userBalances[user];
     }
 
     /// @notice Get remaining daily budget
     function getRemainingDailyBudget() external view returns (uint256) {
         uint256 today = block.timestamp / 1 days;
-        if (today > lastResetDay) {
-            return dailyBudget;
-        }
-        if (spentToday >= dailyBudget) {
-            return 0;
-        }
+        if (today > lastResetDay) return dailyBudget;
+        if (spentToday >= dailyBudget) return 0;
         return dailyBudget - spentToday;
     }
 
-    /// @notice Link a ShadeVerifier contract for auto-logging receipts.
-    ///         The verifier must have this vault's owner as its owner too.
-    /// @param _verifier Address of the deployed ShadeVerifier
+    /// @notice Link a ShadeVerifier contract
     function setVerifier(address _verifier) external onlyOwner {
         require(_verifier != address(0), "Cannot set zero address");
         verifier = ShadeVerifier(_verifier);
         emit VerifierSet(_verifier);
     }
 
-    /// @notice Spend from vault AND log a receipt to the verifier in one tx.
-    ///         Combines payment + proof-of-execution atomically.
-    /// @param recipient The address to send ETH to
-    /// @param amount The amount of ETH to send (wei)
-    /// @param intentHash keccak256 of the intent category
-    /// @param taskHash keccak256 of the full task description
-    /// @param disclosureHash keccak256 of the disclosure manifest
-    /// @param intentCategory plain-text broad category
-    /// @param fieldsHidden number of fields hidden
-    /// @param fieldsRevealed number of fields revealed
+    /// @notice Spend from user balance AND log receipt atomically
+    function spendFromAndLog(
+        address user,
+        address payable recipient,
+        uint256 amount,
+        bytes32 intentHash,
+        bytes32 taskHash,
+        bytes32 disclosureHash,
+        string calldata intentCategory,
+        uint8 fieldsHidden,
+        uint8 fieldsRevealed
+    ) external onlyAuthorized nonReentrant {
+        require(address(verifier) != address(0), "Verifier not set");
+        require(userBalances[user] >= amount, "Insufficient user balance");
+        userBalances[user] -= amount;
+        _executeSpend(recipient, amount, intentHash);
+        verifier.logTask(taskHash, disclosureHash, intentCategory, amount, fieldsHidden, fieldsRevealed, true);
+    }
+
+    /// @notice Legacy spendAndLog (backwards compat)
     function spendAndLog(
         address payable recipient,
         uint256 amount,
@@ -171,25 +190,13 @@ contract ShadeVault is Ownable, ReentrancyGuard {
         string calldata intentCategory,
         uint8 fieldsHidden,
         uint8 fieldsRevealed
-    ) external onlyOwner nonReentrant {
+    ) external onlyAuthorized nonReentrant {
         require(address(verifier) != address(0), "Verifier not set");
-
-        // Execute the spend
         _executeSpend(recipient, amount, intentHash);
-
-        // Log the receipt
-        verifier.logTask(
-            taskHash,
-            disclosureHash,
-            intentCategory,
-            amount,
-            fieldsHidden,
-            fieldsRevealed,
-            true // success — if spend didn't revert, task succeeded
-        );
+        verifier.logTask(taskHash, disclosureHash, intentCategory, amount, fieldsHidden, fieldsRevealed, true);
     }
 
-    /// @notice Internal spend logic shared by spend() and spendAndLog()
+    /// @notice Internal spend logic
     function _executeSpend(
         address payable recipient,
         uint256 amount,
@@ -205,7 +212,6 @@ contract ShadeVault is Ownable, ReentrancyGuard {
             spentToday = 0;
             lastResetDay = today;
         }
-
         require(spentToday + amount <= dailyBudget, "Exceeds daily budget");
         spentToday += amount;
 
@@ -215,8 +221,9 @@ contract ShadeVault is Ownable, ReentrancyGuard {
         emit SpendExecuted(recipient, amount, intentHash);
     }
 
-    /// @notice Accept ETH deposits
+    /// @notice Accept ETH deposits — tracked per sender
     receive() external payable {
-        emit Deposited(msg.value);
+        userBalances[msg.sender] += msg.value;
+        emit Deposited(msg.sender, msg.value);
     }
 }

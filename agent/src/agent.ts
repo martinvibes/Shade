@@ -14,6 +14,7 @@ import { formatAgentIdentity } from "./identity/ens.js";
 import { classifyTask } from "./execution/task-classifier.js";
 import { executeClassifiedTask, type ExecutionResult } from "./execution/task-executor.js";
 import { classifyDCATask, createOrder, getETHPrice, type DCAOrder } from "./execution/dca-monitor.js";
+import { recordTransaction } from "./execution/user-history.js";
 
 // ── Types ──
 
@@ -59,7 +60,8 @@ const VERIFIER_ABI = [
  */
 export async function executeTask(
   taskDescription: string,
-  privacyLevel: PrivacyLevel = config.privacyLevel
+  privacyLevel: PrivacyLevel = config.privacyLevel,
+  userAddress?: string
 ): Promise<TaskResult> {
   const { signer } = getBaseSigner();
   const operatorAddress = await signer.getAddress();
@@ -88,6 +90,7 @@ export async function executeTask(
 
     const classifyStart = Date.now();
     const classified = await classifyTask(taskDescription);
+    classified.userAddress = userAddress;
     const classifyDuration = Date.now() - classifyStart;
 
     log(`Task classified: ${classified.type}`, "discovery", classified.intentCategory);
@@ -324,6 +327,24 @@ export async function executeTask(
 
     const privacyReport = generatePrivacyReport(manifest);
     const finalLog = logger.finalize();
+
+    // Record per-user transaction history
+    if (userAddress && execution) {
+      recordTransaction({
+        userAddress: userAddress!,
+        taskHash: ethers.keccak256(ethers.toUtf8Bytes(taskDescription)),
+        intentCategory: classified.intentCategory,
+        cost: String(classified.amount || 0),
+        currency: classified.currency,
+        fieldsHidden: hidden,
+        fieldsRevealed: revealed,
+        success: execution!.success,
+        timestamp: Math.floor(Date.now() / 1000),
+        txHash: execution!.txHash,
+        recipient: execution!.recipient,
+        method: execution!.method,
+      });
+    }
 
     return {
       success: true,
