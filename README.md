@@ -1,74 +1,115 @@
-# Shade — Privacy-Preserving Autonomous Agent
+<p align="center">
+  <img src="web/public/icon.svg" width="80" height="80" alt="Shade Logo" />
+</p>
 
-> An AI agent that proves it can act, without exposing who sent it.
+<h1 align="center">Shade</h1>
 
-Shade is a fully autonomous AI agent that executes on-chain actions on behalf of users — private payments, vault transfers, anonymous donations — **without ever revealing the user's identity, wallet, or intent**.
+<p align="center">
+  <strong>An AI agent that proves it can act, without exposing who sent it.</strong>
+</p>
+
+<p align="center">
+  <a href="https://shade-privacy.vercel.app">Live Demo</a> &nbsp;|&nbsp;
+  <a href="https://youtu.be/sgFL1r5_FuY">Video Walkthrough</a> &nbsp;|&nbsp;
+  <a href="https://sepolia.basescan.org/address/0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC">Contracts</a> &nbsp;|&nbsp;
+  <a href="https://www.8004scan.io/agents/2321">ERC-8004 Identity</a>
+</p>
+
+---
+
+## The Problem
+
+Every AI agent today leaks its operator's identity. When an agent calls an API, pays for a service, or interacts with a contract, it creates metadata — wallet addresses, transaction patterns, IP addresses, spending behavior — all tracing back to the human behind it.
+
+**Your agent isn't leaking its own data. It's leaking yours.**
+
+## What Shade Does
+
+Shade is an autonomous agent that handles payments and on-chain actions privately. You give it a task, and it figures out the minimum information needed to complete it — hiding everything else.
+
+**Private ETH Transfers** — Send ETH from ShadeVault to any address or ENS name. Your wallet never appears on-chain. Per-user balance tracking ensures you only spend what you deposited.
+
+**Private USDC Payments** — Send USDC through Locus on Base mainnet. The recipient gets paid but can't trace it back to you.
+
+**Private DCA Orders** — Set a price target. When ETH hits it, the agent auto-executes a private transfer. Live candlestick charts, real-time price monitoring.
+
+**Recurring Auto-Payments** — Schedule private payments at any interval — every 5 minutes to every month. The agent handles everything autonomously.
+
+**ENS Resolution** — Type `vitalik.eth` instead of raw hex addresses. The agent resolves names privately via Ethereum mainnet.
+
+**On-chain Receipts** — Every action gets a verifiable receipt on ShadeVerifier. Anyone can verify the agent acted correctly, but nobody can see who requested it.
+
+**PDF Audit Logs** — Export your full privacy report as a branded PDF. Every field hidden, every action logged, compliance-ready.
+
+**QR Code Payments** — Generate scannable payment links for mobile deposits to both the vault and Locus wallet.
+
+Every transaction listed above is real, executed on-chain, and verifiable on BaseScan.
 
 ## How It Works
 
-1. **Private Reasoning** — Venice AI processes every task with zero data retention. No prompts stored. No responses logged.
-2. **Selective Disclosure** — The agent reasons about the *minimum* information needed to complete a task. Budget range instead of exact amount. Category instead of full intent. Identity always hidden.
-3. **Ephemeral Execution** — Payments route through one-time wallets via ShadeVault. Authorization proven with ZK proofs. Nothing links the action back to you.
-4. **On-chain Receipts** — Every task is logged to ShadeVerifier as a privacy-preserving receipt. Verifiable by anyone, reveals nothing about the operator.
-
-## What Shade Actually Does (Real, Not Mocked)
-
-- **Private vault transfers** — Send ETH from ShadeVault to any address. The vault's spending controls enforce budget limits. On-chain, verifiable.
-- **Private payments via Locus** — Send USDC through Locus-managed wallets. The recipient receives payment but cannot trace it to the sender.
-- **Anonymous donations** — Fund public goods without revealing your identity.
-- **Privacy analysis** — For any task, Shade generates a disclosure manifest showing exactly what was hidden vs revealed.
-
-All transactions are real and verifiable on Base Sepolia block explorer.
+```
+User connects wallet
+    |
+    v
+Deposits ETH into ShadeVault (per-user balance tracked on-chain)
+    |
+    v
+Types a task: "Send 0.001 ETH to vitalik.eth privately"
+    |
+    v
+Venice AI reasons about the task (zero data retention)
+    |
+    v
+Selective Disclosure Engine decides minimum info to reveal
+    |
+    v
+ENS resolves "vitalik.eth" to an address (Ethereum mainnet lookup)
+    |
+    v
+Agent executes via ShadeVault (ETH) or Locus (USDC)
+    |
+    v
+Receipt logged on-chain to ShadeVerifier
+    |
+    v
+User sees privacy report: what was hidden vs what was revealed
+```
 
 ## Architecture
 
-```
-User connects wallet → Deposits ETH into ShadeVault
-    ↓
-User gives task ("Send 0.001 ETH to 0x... privately")
-    ↓
-Venice AI reasons about the task (zero data retention)
-    ↓
-Disclosure Engine decides minimum info to reveal
-    ↓
-Agent executes via ShadeVault or Locus (ephemeral wallets)
-    ↓
-Receipt logged on-chain to ShadeVerifier
-    ↓
-User sees privacy report: what was hidden vs revealed
-```
-
-## Tech Stack
-
 | Layer | Technology |
 |-------|-----------|
-| AI Inference | Venice AI (private, zero retention) |
+| AI Inference | Venice AI (private, zero data retention) |
 | Smart Contracts | Solidity 0.8.20, Foundry, OpenZeppelin |
 | Agent Backend | TypeScript, Express.js, ethers.js v6 |
-| Frontend | Next.js 16, Tailwind CSS, Framer Motion |
+| Frontend | Next.js, Tailwind CSS, Framer Motion |
 | Wallet | RainbowKit, wagmi, viem |
-| Payments | Locus (USDC on Base) |
-| Agent Identity | ERC-8004 (Agent #2321) |
-| Chains | Base Sepolia, Status Sepolia |
+| Payments | Locus API (USDC on Base mainnet) |
+| Agent Identity | ERC-8004 (Agent #2321 on Base Sepolia) |
+| Price Feed | CoinGecko API with CoinLore fallback |
+| Deployment | Vercel (frontend) + Railway (backend) |
 
 ## Deployed Contracts
 
-### Base Sepolia
+**Base Sepolia**
+
 | Contract | Address |
 |----------|---------|
-| ShadeVault | [`0x6a9E17F61023f3Cd39Cc1F29D4649E87BD004ebb`](https://sepolia.basescan.org/address/0x6a9E17F61023f3Cd39Cc1F29D4649E87BD004ebb) |
+| ShadeVault (v2) | [`0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC`](https://sepolia.basescan.org/address/0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC) |
 | ShadeVerifier | [`0xb2908FB08B189f2b91926705940E15D4E75ab501`](https://sepolia.basescan.org/address/0xb2908FB08B189f2b91926705940E15D4E75ab501) |
 
-### Status Sepolia
+**Status Sepolia** (gasless, gas = 0)
+
 | Contract | Address |
 |----------|---------|
 | ShadeVault | [`0xA262185de81ee3fE50266a765a5e6AFa5Ad430D7`](https://sepoliascan.status.network/address/0xA262185de81ee3fE50266a765a5e6AFa5Ad430D7) |
 | ShadeVerifier | [`0xF74079a7CC2d0FB0268B10E34bbeBfd2f4299EC0`](https://sepoliascan.status.network/address/0xF74079a7CC2d0FB0268B10E34bbeBfd2f4299EC0) |
 
-### ERC-8004 Identity
+**ERC-8004 Identity**
+
 | | |
 |-|-|
-| Agent ID | 2321 |
+| Agent ID | #2321 |
 | Registry | [`0x8004A818BFB912233c491871b3d84c89A494BD9e`](https://sepolia.basescan.org/address/0x8004A818BFB912233c491871b3d84c89A494BD9e) |
 | 8004scan | [View Agent](https://www.8004scan.io/agents/2321) |
 
@@ -76,96 +117,112 @@ User sees privacy report: what was hidden vs revealed
 
 ```
 shade/
-├── agent/              # Autonomous agent backend
+├── agent/                    # Autonomous agent backend
 │   └── src/
-│       ├── index.ts            # Express API server
-│       ├── agent.ts            # Main orchestrator pipeline
+│       ├── index.ts          # Express API server + all endpoints
+│       ├── agent.ts          # Main orchestrator (5-phase pipeline)
+│       ├── config.ts         # Environment + contract config
 │       ├── privacy/
-│       │   ├── venice.ts       # Venice AI private inference
-│       │   ├── disclosure.ts   # Selective disclosure engine
+│       │   ├── venice.ts     # Venice AI private inference
+│       │   ├── disclosure.ts # Selective Disclosure Engine
 │       │   └── metadata-strip.ts
 │       ├── identity/
-│       │   ├── erc8004.ts      # ERC-8004 agent registration
-│       │   └── ens.ts          # ENS name resolution
+│       │   ├── erc8004.ts    # ERC-8004 agent registration
+│       │   └── ens.ts        # ENS resolution (multi-RPC fallback)
 │       ├── payments/
-│       │   └── locus.ts        # Locus payment client
+│       │   └── locus.ts      # Locus USDC payment client
 │       ├── execution/
 │       │   ├── task-classifier.ts  # Venice AI task classification
-│       │   └── task-executor.ts    # Real on-chain execution
+│       │   ├── task-executor.ts    # On-chain execution (spendFrom)
+│       │   ├── dca-monitor.ts      # DCA price monitoring + auto-execute
+│       │   ├── recurring.ts        # Recurring payment scheduler
+│       │   └── user-history.ts     # Per-user transaction tracking
 │       └── logging/
-│           └── agent-log.ts    # Structured logging (Protocol Labs)
-├── contracts/          # Solidity smart contracts (Foundry)
+│           └── agent-log.ts  # Structured logs (Protocol Labs format)
+├── contracts/                # Solidity smart contracts (Foundry)
 │   └── src/
-│       ├── ShadeVault.sol      # Privacy-preserving treasury
-│       └── ShadeVerifier.sol   # On-chain task receipts
-├── web/                # Frontend (Next.js)
+│       ├── ShadeVault.sol    # Per-user treasury with spending controls
+│       └── ShadeVerifier.sol # On-chain privacy-preserving receipts
+├── web/                      # Frontend (Next.js)
 │   └── src/
 │       ├── app/
-│       │   ├── page.tsx        # Landing page
-│       │   ├── app/page.tsx    # Agent dashboard
-│       │   └── demo/page.tsx   # Live demo
-│       └── components/         # UI components
-├── agent.json          # ERC-8004 agent metadata
-└── .env.example        # Environment template
+│       │   ├── page.tsx      # Landing page (scroll-based slides)
+│       │   ├── app/          # Agent dashboard
+│       │   ├── dca/          # DCA orders + live price charts
+│       │   ├── recurring/    # Auto-Pay scheduled payments
+│       │   └── demo/         # Side-by-side comparison view
+│       └── components/
+│           ├── DCAPanel.tsx   # Candlestick + line charts
+│           ├── TaskHistory.tsx # Per-user transaction history
+│           ├── DepositModal.tsx # Vault deposit with QR code
+│           ├── ExportPDF.tsx  # PDF audit log export
+│           ├── QRPayment.tsx  # QR payment link generator
+│           └── ShadeLogo.tsx  # Brand logo component
+├── agent.json                # ERC-8004 agent metadata
+└── agent_log.json            # Structured execution log
 ```
 
-## Setup
+## Getting Started
 
 ```bash
-# Clone
+# Clone the repo
 git clone https://github.com/martinvibes/Shade.git
 cd Shade
 
-# Copy environment config
+# Set up environment
 cp .env.example .env
 # Fill in: VENICE_API_KEY, PRIVATE_KEY, LOCUS_API_KEY
 
-# Install dependencies
+# Install everything
 cd agent && pnpm install
 cd ../web && pnpm install
 
-# Run agent backend
+# Start the agent (Terminal 1)
 cd agent && pnpm dev
 
-# Run frontend (separate terminal)
+# Start the frontend (Terminal 2)
 cd web && pnpm dev
 
 # Open http://localhost:3000
 ```
 
-## API Endpoints
+## API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Agent status |
 | POST | `/task` | Execute a task privately |
-| GET | `/stats` | On-chain agent stats |
-| GET | `/vault/balance` | ShadeVault balance |
-| GET | `/verify/:hash` | Verify task on-chain |
-| GET | `/locus/balance` | Locus wallet balance |
-
-## Smart Contract Tests
-
-```bash
-cd contracts
-forge test -v
-# 43 tests passing
-```
+| GET | `/vault/balance?user=0x...` | Per-user vault balance |
+| GET | `/user/history?user=0x...` | Per-user transaction history |
+| GET | `/health` | Agent status |
+| GET | `/stats` | Global agent metrics |
+| GET | `/dca/orders?user=0x...` | User's DCA orders |
+| POST | `/dca/create` | Create a DCA price order |
+| GET | `/dca/price` | Current ETH price (cached) |
+| GET | `/dca/chart` | 24h line + OHLC chart data |
+| POST | `/recurring/create` | Create recurring payment |
+| GET | `/recurring/list?user=0x...` | User's scheduled payments |
+| GET | `/locus/status` | Locus USDC wallet info |
+| GET | `/ens/resolve/:name` | Resolve ENS name to address |
 
 ## What Makes Shade Different
 
-Every other agent project at this hackathon builds agents that DO things. Shade builds an agent that does things **without leaking who asked for it**.
+Every other agent project builds agents that *do* things. Shade builds an agent that does things **without leaking who asked for it**.
 
-The Selective Disclosure Engine is the core innovation — no other project has an agent that *reasons about what information to reveal*. It's not just encryption or mixing. The agent actively decides: "I need to reveal a budget range to complete this task, but I can hide the exact amount, the identity, the wallet, the IP, and the full intent."
+The Selective Disclosure Engine is the core innovation. The agent actively reasons: "I need to reveal a budget range to complete this task, but I can hide the exact amount, the identity, the wallet, the IP, and the full intent."
+
+It's not encryption. It's not mixing. It's an AI that decides what to reveal and what to keep secret — per task, in real time.
 
 ## Hackathon Tracks
 
-- **Venice AI** — Private inference as the core reasoning engine
-- **Protocol Labs — Let the Agent Cook** — Fully autonomous agent with ERC-8004 identity + structured logs
-- **Protocol Labs — Agents With Receipts** — On-chain verifiable task receipts via ShadeVerifier
-- **Status Network** — Contracts deployed on Status Sepolia (gasless)
-- **Locus** — Private payments via Locus USDC wallets
-- **Synthesis Open Track** — Best overall project
+| Track | What We Built |
+|-------|--------------|
+| Venice AI | Every task reasons through Venice with zero data retention |
+| Protocol Labs — Let the Agent Cook | Fully autonomous agent with ERC-8004 #2321, structured agent_log.json |
+| Protocol Labs — Agents With Receipts | On-chain receipts on ShadeVerifier, verifiable on BaseScan |
+| Status Network — Go Gasless | Contracts deployed on Status Sepolia at 0 gwei |
+| Locus — Best Use | Real USDC payments on Base mainnet via Locus API |
+| ENS Identity | ENS resolution as core identity — type names, not addresses |
+| Synthesis Open Track | Full platform with DCA, recurring payments, PDF exports, QR codes |
 
 ## License
 
