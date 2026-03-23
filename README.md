@@ -12,7 +12,7 @@
   <a href="https://shade-privacy.vercel.app">Live Demo</a> &nbsp;|&nbsp;
   <a href="https://youtu.be/sgFL1r5_FuY">Video Walkthrough</a> &nbsp;|&nbsp;
   <a href="https://sepolia.basescan.org/address/0x6cFf39E67B660A14933D83348Ecc5c8102B59EeC">Contracts</a> &nbsp;|&nbsp;
-  <a href="https://www.8004scan.io/agents/2321">ERC-8004 Identity</a>
+  <a href="https://testnet.8004scan.io/agents/base-sepolia/2321">ERC-8004 Identity</a>
 </p>
 
 ---
@@ -111,7 +111,7 @@ User sees privacy report: what was hidden vs what was revealed
 |-|-|
 | Agent ID | #2321 |
 | Registry | [`0x8004A818BFB912233c491871b3d84c89A494BD9e`](https://sepolia.basescan.org/address/0x8004A818BFB912233c491871b3d84c89A494BD9e) |
-| 8004scan | [View Agent](https://www.8004scan.io/agents/2321) |
+| 8004scan | [View Agent](https://testnet.8004scan.io/agents/base-sepolia/2321) |
 
 ## Project Structure
 
